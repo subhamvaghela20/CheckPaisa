@@ -472,5 +472,19 @@ export const styles = StyleSheet.create({
   darkDateGroupHeaderLabel: { fontSize: 13, fontWeight: '700', color: '#10B981' },
   seeMoreButton: { height: 48, borderRadius: 16, backgroundColor: '#E6F9F2', alignItems: 'center', justifyContent: 'center', marginHorizontal: 20, marginTop: 12, marginBottom: 20, borderWidth: 1, borderColor: green },
   darkSeeMoreButton: { backgroundColor: 'rgba(15, 27, 21, 0.85)', borderColor: 'rgba(16, 185, 129, 0.3)' },
-  seeMoreText: { fontSize: 14, fontWeight: '800', color: green }
+  seeMoreText: { fontSize: 14, fontWeight: '800', color: green },
+  micFloatingButton: { width: 48, height: 48, borderRadius: 24, backgroundColor: green, alignItems: 'center', justifyContent: 'center', position: 'absolute', bottom: 98, alignSelf: 'center', shadowColor: '#10B981', shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 5, zIndex: 12 },
+  darkMicFloatingButton: { backgroundColor: '#091510', borderWidth: 1.5, borderColor: '#10B981' },
+  voiceModalCard: { width: '88%', backgroundColor: '#FFFFFF', borderRadius: 28, padding: 22, alignItems: 'center', shadowColor: '#0F172A', shadowOpacity: 0.15, shadowRadius: 20, elevation: 8 },
+  voiceModalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', textAlign: 'center' },
+  voiceModalSubtitle: { fontSize: 13, color: '#64748B', textAlign: 'center', marginTop: 4 },
+  voicePulseCircle: { width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(16, 185, 129, 0.15)', alignItems: 'center', justifyContent: 'center' },
+  voiceMicCircleInner: { width: 64, height: 64, borderRadius: 32, backgroundColor: green, alignItems: 'center', justifyContent: 'center', shadowColor: green, shadowOpacity: 0.4, shadowRadius: 12, elevation: 4 },
+  voiceTranscriptBox: { width: '100%', minHeight: 46, borderRadius: 16, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 14, paddingVertical: 10, justifyContent: 'center', marginVertical: 10 },
+  voiceTranscriptText: { fontSize: 14, fontWeight: '600', color: '#0F172A', textAlign: 'center' },
+  voiceSampleHeading: { fontSize: 12, fontWeight: '700', color: '#64748B', alignSelf: 'flex-start', marginTop: 6 },
+  voiceSamplePill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: '#E6F9F2', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)' },
+  voiceSamplePillText: { fontSize: 12, fontWeight: '700', color: green },
+  voiceCloseButton: { marginTop: 18, width: '100%', height: 46, borderRadius: 14, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  voiceCloseButtonText: { fontSize: 14, fontWeight: '800', color: '#334155' }
 });
