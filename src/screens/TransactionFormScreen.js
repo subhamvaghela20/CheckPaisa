@@ -1,0 +1,144 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { AppIcon } from '../components/AppIcon';
+import { categories as defaultCategories } from '../data/appData';
+import { formatDate, formatTime } from '../utils/date';
+import { styles } from '../styles/styles';
+
+export function TransactionFormScreen({ transaction, categories = defaultCategories, darkMode = false, onClose, onSave }) {
+  const editing = Boolean(transaction);
+  const [type, setType] = useState(transaction?.type || 'Expense');
+  const [amount, setAmount] = useState(transaction ? String(transaction.amount) : '');
+  const [category, setCategory] = useState(transaction?.category || 'Food');
+  const [note, setNote] = useState(transaction?.note || '');
+  const [transactionDate, setTransactionDate] = useState(transaction?.createdAt ? new Date(transaction.createdAt) : new Date());
+  const [pickerMode, setPickerMode] = useState(null);
+  const scrollViewRef = useRef(null);
+
+  const availableCategories = categories && categories.length > 0 ? categories : defaultCategories;
+  const filteredCategories = availableCategories.filter((item) => item.type === type);
+
+  useEffect(() => {
+    const keyboardHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    });
+
+    return () => {
+      keyboardHideListener.remove();
+    };
+  }, []);
+
+  const handleTypeChange = (newType) => {
+    setType(newType);
+    const available = availableCategories.filter((item) => item.type === newType);
+    if (available.length > 0 && !available.some((item) => item.name === category)) {
+      setCategory(available[0].name);
+    }
+  };
+
+  const updateDate = (_, selectedDate) => {
+    setPickerMode(null);
+    if (selectedDate) setTransactionDate(selectedDate);
+  };
+
+  const save = () => {
+    const numericAmount = Number(amount);
+    if (!numericAmount || numericAmount <= 0) return Alert.alert('Enter an amount', 'Please enter an amount greater than zero.');
+    onSave({ id: transaction?.id || String(Date.now()), type, amount: numericAmount, category, note: note.trim(), createdAt: transactionDate.toISOString() });
+  };
+
+  return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={[styles.formScreen, darkMode && { backgroundColor: '#040C08' }]}>
+        <View style={[styles.formHero, darkMode && { backgroundColor: '#0B2E21' }]}>
+          <View style={styles.formHeader}>
+            <Pressable style={styles.formClose} onPress={onClose}>
+              <AppIcon name="back" size={20} color="#FFFFFF" />
+            </Pressable>
+            <Text style={styles.formTitle}>{editing ? 'Edit Transaction' : 'Add Transaction'}</Text>
+            <View style={styles.headerBlank} />
+          </View>
+          <Text style={styles.howMuch}>Enter Amount</Text>
+          <View style={styles.amountInputContainer}>
+            <Text style={styles.currency}>₹</Text>
+            <TextInput
+              value={amount}
+              onChangeText={(value) => setAmount(value.replace(/[^0-9.]/g, ''))}
+              keyboardType="decimal-pad"
+              placeholder="0"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              style={styles.amountInput}
+              autoFocus
+              selectionColor="#FFFFFF"
+            />
+          </View>
+        </View>
+        <View style={[styles.formPanel, darkMode && { backgroundColor: '#091510' }]}>
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.formPanelContent}
+            contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 240 }]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={[styles.typeToggle, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', borderWidth: 1 }]}>
+              <Pressable style={[styles.typeOption, type === 'Expense' && (darkMode ? { backgroundColor: '#EF4444' } : styles.selectedType)]} onPress={() => handleTypeChange('Expense')}>
+                <Text style={[styles.typeText, type === 'Expense' && (darkMode ? { color: '#FFF', fontWeight: '800' } : styles.expenseTypeText)]}>Expense</Text>
+              </Pressable>
+              <Pressable style={[styles.typeOption, type === 'Income' && (darkMode ? { backgroundColor: '#10B981' } : styles.selectedType)]} onPress={() => handleTypeChange('Income')}>
+                <Text style={[styles.typeText, type === 'Income' && (darkMode ? { color: '#000', fontWeight: '800' } : styles.incomeTypeText)]}>Income</Text>
+              </Pressable>
+            </View>
+            <View style={styles.dateTimeRow}>
+              <Pressable style={[styles.dateTimeButton, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)' }]} onPress={() => setPickerMode('date')}>
+                <Text style={[styles.dateTimeLabel, darkMode && { color: '#94A3B8' }]}>Date</Text>
+                <Text style={[styles.dateTimeValue, darkMode && { color: '#FFF' }]}>{formatDate(transactionDate)}</Text>
+              </Pressable>
+              <Pressable style={[styles.dateTimeButton, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)' }]} onPress={() => setPickerMode('time')}>
+                <Text style={[styles.dateTimeLabel, darkMode && { color: '#94A3B8' }]}>Time</Text>
+                <Text style={[styles.dateTimeValue, darkMode && { color: '#FFF' }]}>{formatTime(transactionDate)}</Text>
+              </Pressable>
+            </View>
+            {pickerMode && <DateTimePicker value={transactionDate} mode={pickerMode} display="default" onChange={updateDate} />}
+            <Text style={[styles.categoryHeading, darkMode && { color: '#FFF' }]}>{type} Category</Text>
+            <View style={styles.categoryGrid}>
+              {filteredCategories.map((item) => {
+                const isSelected = category === item.name;
+                const catColor = item.color || '#64748B';
+
+                return (
+                  <Pressable key={item.name} style={styles.categoryChoice} onPress={() => setCategory(item.name)}>
+                    <View
+                      style={[
+                        styles.categoryCircle,
+                        darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)' },
+                        isSelected && { borderColor: catColor, borderWidth: 2, backgroundColor: darkMode ? 'rgba(16,185,129,0.15)' : '#FFF7ED' },
+                      ]}
+                    >
+                      <AppIcon name={item.icon || 'other'} color={catColor} size={24} />
+                    </View>
+                    <Text style={[styles.categoryName, darkMode && { color: '#94A3B8' }, isSelected && { color: catColor, fontWeight: '800' }]}>
+                      {item.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <TextInput
+              value={note}
+              onChangeText={setNote}
+              placeholder="Add note (optional)"
+              placeholderTextColor="#94A3B8"
+              style={[styles.noteInput, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', color: '#FFF' }]}
+              multiline
+            />
+            <Pressable style={({ pressed }) => [styles.saveButton, darkMode && { backgroundColor: '#10B981' }, pressed && styles.pressedButton]} onPress={save}>
+              <Text style={[styles.saveButtonText, darkMode && { color: '#000' }]}>{editing ? 'Save Changes' : 'Add Transaction'}</Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}

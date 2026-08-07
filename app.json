@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Money Tracker",
+    "slug": "money-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#10B981"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#10B981"
+      }
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
+  }
+}
