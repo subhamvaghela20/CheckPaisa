@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '../components/AppIcon';
-import { VoiceMicModal } from '../components/VoiceMicModal';
 import { categories } from '../data/appData';
 import { formatTime, groupTransactionsByDate } from '../utils/date';
 import { green, styles } from '../styles/styles';
 
-export function HomeScreen({ transactions, budgets, user, darkMode = false, onAdd, onSaveVoiceTransaction, onOpenTransaction, onNavigate }) {
+export function HomeScreen({ transactions, budgets, user, darkMode = false, onAdd, onOpenTransaction, onNavigate }) {
   const [activeTab, setActiveTab] = useState('Home');
 
   const income = transactions.filter((item) => item.type === 'Income').reduce((total, item) => total + item.amount, 0);
@@ -107,7 +106,7 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
                 <Text style={{ fontSize: 22, color: '#10B981', fontWeight: '900' }}>₹</Text>
               </View>
               <Text style={styles.darkHomeEmptyTitle}>No transactions yet</Text>
-              <Text style={styles.darkHomeEmptyMessage}>Tap the + button or Hold the 🎙️ Mic button to add by voice.</Text>
+              <Text style={styles.darkHomeEmptyMessage}>Tap the + button below to add your first transaction.</Text>
             </View>
           ) : (
             groupedTransactions.map((group) => (
@@ -159,9 +158,6 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
             </Pressable>
           ))}
         </View>
-
-        {/* Voice Entry Mic Button (Positioned directly above Plus Button) */}
-        <VoiceMicModal categories={categories} darkMode={darkMode} onSaveVoiceTransaction={onSaveVoiceTransaction} />
 
         {/* Floating Add Button */}
         <Pressable style={({ pressed }) => [styles.floatingButton, pressed && styles.pressedButton]} onPress={onAdd}>
@@ -240,7 +236,7 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
               <Text style={styles.emptyIconText}>₹</Text>
             </View>
             <Text style={styles.emptyTitle}>No transactions yet</Text>
-            <Text style={styles.emptyMessage}>Tap the + button or Hold the 🎙️ Mic button to add by voice.</Text>
+            <Text style={styles.emptyMessage}>Tap the + button below to add your first transaction.</Text>
           </View>
         ) : (
           groupedTransactions.map((group) => (
@@ -293,9 +289,6 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
           </Pressable>
         ))}
       </View>
-
-      {/* Voice Entry Mic Button (Positioned directly above Plus Button) */}
-      <VoiceMicModal categories={categories} darkMode={darkMode} onSaveVoiceTransaction={onSaveVoiceTransaction} />
 
       {/* Floating Add Button */}
       <Pressable style={({ pressed }) => [styles.floatingButton, pressed && styles.pressedButton]} onPress={onAdd}>

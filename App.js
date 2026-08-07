@@ -277,7 +277,6 @@ export default function App() {
             user={user}
             darkMode={darkMode}
             onAdd={() => pushScreen(SCREENS.ADD)}
-            onSaveVoiceTransaction={handleAddTransaction}
             onOpenTransaction={openTransaction}
             onNavigate={switchTab}
           />

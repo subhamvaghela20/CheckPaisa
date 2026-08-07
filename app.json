@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Money Tracker",
-    "slug": "money-tracker",
+    "name": "CheckPaisa",
+    "slug": "checkpaisa",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
