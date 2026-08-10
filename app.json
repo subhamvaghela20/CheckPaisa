@@ -9,13 +9,22 @@
       "resizeMode": "contain",
       "backgroundColor": "#10B981"
     },
+    "icon": "./assets/icon.png",
     "android": {
+      "package": "com.sidgjh.checkpaisa",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#10B981"
       }
     },
     "plugins": [
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "cf194d12-bd98-4965-a788-c84ca4fb6667"
+      }
+    },
+    "owner": "sidgjh"
   }
 }
