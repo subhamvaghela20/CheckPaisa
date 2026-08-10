@@ -9,11 +9,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#10B981"
     },
-    "icon": "./assets/icon.png",
     "android": {
       "package": "com.sidgjh.checkpaisa",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#10B981"
       }
     },
