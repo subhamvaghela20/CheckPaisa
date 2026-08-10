@@ -208,6 +208,14 @@ export default function App() {
     popScreen();
   };
 
+  const handleVoiceAdd = (transaction) => {
+    setTransactions((current) => {
+      const updated = [transaction, ...current];
+      saveTransactions(updated, user.email);
+      return updated;
+    });
+  };
+
   const handleEditTransaction = (updatedTransaction) => {
     setTransactions((current) => {
       const updated = current.map((item) => (item.id === updatedTransaction.id ? updatedTransaction : item));
@@ -276,7 +284,9 @@ export default function App() {
             budgets={budgets}
             user={user}
             darkMode={darkMode}
+            customCategories={customCategories}
             onAdd={() => pushScreen(SCREENS.ADD)}
+            onVoiceAdd={handleVoiceAdd}
             onOpenTransaction={openTransaction}
             onNavigate={switchTab}
           />
@@ -389,7 +399,9 @@ export default function App() {
             budgets={budgets}
             user={user}
             darkMode={darkMode}
+            customCategories={customCategories}
             onAdd={() => pushScreen(SCREENS.ADD)}
+            onVoiceAdd={handleVoiceAdd}
             onOpenTransaction={openTransaction}
             onNavigate={switchTab}
           />

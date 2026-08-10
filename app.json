@@ -16,7 +16,11 @@
       }
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      ["expo-speech-recognition", {
+        "microphonePermission": "Allow CheckPaisa to use the microphone for voice transactions.",
+        "speechRecognitionPermission": "Allow CheckPaisa to recognize your speech."
+      }]
     ],
     "extra": {
       "eas": {

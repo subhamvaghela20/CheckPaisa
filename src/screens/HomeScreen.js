@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '../components/AppIcon';
+import { VoiceMicButton } from '../components/VoiceMicButton';
 import { categories } from '../data/appData';
 import { formatTime, groupTransactionsByDate } from '../utils/date';
 import { green, styles } from '../styles/styles';
 
-export function HomeScreen({ transactions, budgets, user, darkMode = false, onAdd, onOpenTransaction, onNavigate }) {
+export function HomeScreen({ transactions, budgets, user, darkMode = false, onAdd, onOpenTransaction, onNavigate, customCategories = [], onVoiceAdd }) {
   const [activeTab, setActiveTab] = useState('Home');
 
   const income = transactions.filter((item) => item.type === 'Income').reduce((total, item) => total + item.amount, 0);
@@ -163,6 +164,9 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
         <Pressable style={({ pressed }) => [styles.floatingButton, pressed && styles.pressedButton]} onPress={onAdd}>
           <AppIcon name="plus" size={31} />
         </Pressable>
+
+        {/* Floating Voice Mic Button */}
+        <VoiceMicButton darkMode={true} categories={[...categories, ...customCategories]} onTransactionParsed={onVoiceAdd} />
       </LinearGradient>
     );
   }
@@ -294,6 +298,9 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
       <Pressable style={({ pressed }) => [styles.floatingButton, pressed && styles.pressedButton]} onPress={onAdd}>
         <AppIcon name="plus" size={31} />
       </Pressable>
+
+      {/* Floating Voice Mic Button */}
+      <VoiceMicButton darkMode={false} categories={[...categories, ...customCategories]} onTransactionParsed={onVoiceAdd} />
     </View>
   );
 }
