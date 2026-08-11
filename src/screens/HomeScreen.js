@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '../components/AppIcon';
 import { VoiceMicButton } from '../components/VoiceMicButton';
@@ -7,12 +8,46 @@ import { categories } from '../data/appData';
 import { formatTime, groupTransactionsByDate } from '../utils/date';
 import { green, styles } from '../styles/styles';
 
-export function HomeScreen({ transactions, budgets, user, darkMode = false, onAdd, onOpenTransaction, onNavigate, customCategories = [], onVoiceAdd }) {
+export function HomeScreen({
+  transactions,
+  budgets,
+  user,
+  darkMode = false,
+  onAdd,
+  onOpenTransaction,
+  onNavigate,
+  customCategories = [],
+  onVoiceAdd,
+  wallets = [],
+  activeWalletId = 'default_wallet',
+  onSelectWallet,
+}) {
   const [activeTab, setActiveTab] = useState('Home');
+  const [showWalletDropdown, setShowWalletDropdown] = useState(false);
+  const insets = useSafeAreaInsets();
 
-  const income = transactions.filter((item) => item.type === 'Income').reduce((total, item) => total + item.amount, 0);
-  const expense = transactions.filter((item) => item.type === 'Expense').reduce((total, item) => total + item.amount, 0);
-  const balance = income - expense;
+  const activeWallet = wallets.find((w) => w.id === activeWalletId) || wallets[0] || {
+    id: 'default_wallet',
+    name: 'Main Wallet',
+    initialBalance: 0,
+  };
+
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    fadeAnim.setValue(0.5);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  }, [activeWalletId]);
+
+  const walletTransactions = transactions.filter((item) => !item.walletId || item.walletId === activeWallet.id);
+
+  const income = walletTransactions.filter((item) => item.type === 'Income').reduce((total, item) => total + item.amount, 0);
+  const expense = walletTransactions.filter((item) => item.type === 'Expense').reduce((total, item) => total + item.amount, 0);
+  const balance = (activeWallet.initialBalance || 0) + income - expense;
 
   const userName = user?.name || 'Siddharajsinh';
   const initial = userName.charAt(0).toUpperCase();
@@ -25,7 +60,7 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
     onNavigate?.(tab);
   };
 
-  const groupedTransactions = groupTransactionsByDate(transactions);
+  const groupedTransactions = groupTransactionsByDate(walletTransactions);
 
   // 1. Dark Mode Theme Layout
   if (darkMode) {
@@ -33,7 +68,7 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
       <LinearGradient colors={['#0B2E21', '#041710', '#010805']} style={{ flex: 1 }}>
         <View style={styles.exactAuthGlowTopRight} pointerEvents="none" />
 
-        <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.darkHomeScrollContent, { paddingBottom: 110 }]} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.darkHomeScrollContent, { paddingBottom: 110 + insets.bottom }]} showsVerticalScrollIndicator={false}>
           {/* Top Hero Header Block */}
           <View style={styles.darkHomeHero}>
             <View style={styles.homeTopRow}>
@@ -54,20 +89,32 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
               </View>
             </View>
 
-            <Text style={styles.darkHomeBalanceLabel}>Total Balance</Text>
-            <Text style={styles.darkHomeBalance}>₹{balance.toLocaleString('en-IN')}</Text>
+            {/* Centered Wallet Dropdown Pill (Matching Screenshot Attachment) */}
+            <Pressable
+              style={styles.darkWalletDropdownPill}
+              onPress={() => setShowWalletDropdown(true)}
+            >
+              <AppIcon name="wallet" color="#10B981" size={19} />
+              <Text style={styles.darkWalletDropdownText}>{activeWallet.name}</Text>
+              <Text style={styles.walletDropdownChevron}>∨</Text>
+            </Pressable>
 
-            {/* Income / Expense Summary Cards */}
-            <View style={styles.summaryRow}>
-              <View style={styles.darkHomeSummaryCard}>
-                <Text style={styles.darkHomeIncomeLabel}>↘  Income</Text>
-                <Text style={styles.darkHomeIncomeValue}>₹{income.toLocaleString('en-IN')}</Text>
+            <Animated.View style={{ opacity: fadeAnim }}>
+              <Text style={styles.darkHomeBalanceLabel}>Total Balance ({activeWallet.name})</Text>
+              <Text style={styles.darkHomeBalance}>₹{balance.toLocaleString('en-IN')}</Text>
+
+              {/* Income / Expense Summary Cards */}
+              <View style={styles.summaryRow}>
+                <View style={styles.darkHomeSummaryCard}>
+                  <Text style={styles.darkHomeIncomeLabel}>↘  Income</Text>
+                  <Text style={styles.darkHomeIncomeValue}>₹{income.toLocaleString('en-IN')}</Text>
+                </View>
+                <View style={styles.darkExpenseSummaryCardLightRed}>
+                  <Text style={styles.darkHomeExpenseLabel}>↗  Expense</Text>
+                  <Text style={styles.darkHomeExpenseValue}>₹{expense.toLocaleString('en-IN')}</Text>
+                </View>
               </View>
-              <View style={styles.darkHomeSummaryCard}>
-                <Text style={styles.darkHomeExpenseLabel}>↗  Expense</Text>
-                <Text style={styles.darkHomeExpenseValue}>₹{expense.toLocaleString('en-IN')}</Text>
-              </View>
-            </View>
+            </Animated.View>
           </View>
 
           {/* Monthly Budget Card */}
@@ -146,7 +193,7 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
         </ScrollView>
 
         {/* Bottom Navigation */}
-        <View style={styles.darkHomeNavContainer}>
+        <View style={[styles.darkHomeNavContainer, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}>
           {[
             ['Home', 'home'],
             ['Reports', 'report'],
@@ -161,12 +208,51 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
         </View>
 
         {/* Floating Add Button */}
-        <Pressable style={({ pressed }) => [styles.floatingButton, pressed && styles.pressedButton]} onPress={onAdd}>
+        <Pressable style={({ pressed }) => [styles.floatingButton, { bottom: 80 + insets.bottom }, pressed && styles.pressedButton]} onPress={onAdd}>
           <AppIcon name="plus" size={31} />
         </Pressable>
 
         {/* Floating Voice Mic Button */}
         <VoiceMicButton darkMode={true} categories={[...categories, ...customCategories]} onTransactionParsed={onVoiceAdd} />
+
+        {/* Centered Wallet Dropdown Modal */}
+        <Modal visible={showWalletDropdown} transparent animationType="fade" onRequestClose={() => setShowWalletDropdown(false)}>
+          <Pressable style={styles.modalCenterBackdrop} onPress={() => setShowWalletDropdown(false)}>
+            <View style={[styles.walletModalCard, { width: '82%' }, darkMode && { backgroundColor: '#091510', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' }]}>
+              <Text style={[styles.walletModalTitle, darkMode && { color: '#fff' }]}>Select Wallet</Text>
+              <ScrollView style={{ maxHeight: 260 }}>
+                {wallets.map((w) => {
+                  const isSel = w.id === activeWallet.id;
+                  return (
+                    <Pressable
+                      key={w.id}
+                      onPress={() => {
+                        onSelectWallet?.(w.id);
+                        setShowWalletDropdown(false);
+                      }}
+                      style={[
+                        styles.currencyOptionRow,
+                        isSel && styles.currencyOptionSelected,
+                        darkMode && isSel && { backgroundColor: 'rgba(16,185,129,0.2)' },
+                      ]}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <AppIcon name="wallet" color={isSel ? '#10B981' : '#64748B'} size={18} />
+                        <Text style={[styles.currencyOptionText, darkMode && { color: '#fff' }, isSel && { color: green, fontWeight: '800' }]}>
+                          {w.name}
+                        </Text>
+                      </View>
+                      {w.isDefault && <Text style={styles.walletDefaultBadge}>Default</Text>}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Pressable style={[styles.sheetClose, { marginTop: 14 }]} onPress={() => setShowWalletDropdown(false)}>
+                <Text style={styles.sheetCloseText}>Close</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
       </LinearGradient>
     );
   }
@@ -174,7 +260,7 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
   // 2. Light Mode Theme Layout (Original White & Emerald Theme)
   return (
     <View style={styles.home}>
-      <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.homeMainScrollContent, { paddingBottom: 110 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.homeMainScrollContent, { paddingBottom: 110 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         <View style={styles.homeHero}>
           <View style={styles.homeTopRow}>
             <View style={styles.avatar}>
@@ -193,18 +279,30 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
               </Pressable>
             </View>
           </View>
-          <Text style={styles.balanceLabel}>Total Balance</Text>
-          <Text style={styles.balance}>₹{balance.toLocaleString('en-IN')}</Text>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>↘  Income</Text>
-              <Text style={styles.summaryValue}>₹{income.toLocaleString('en-IN')}</Text>
+          {/* Centered Wallet Dropdown Pill (Matching Screenshot Attachment) */}
+          <Pressable
+            style={styles.walletDropdownPill}
+            onPress={() => setShowWalletDropdown(true)}
+          >
+            <AppIcon name="wallet" color="#10B981" size={19} />
+            <Text style={styles.walletDropdownText}>{activeWallet.name}</Text>
+            <Text style={styles.walletDropdownChevron}>∨</Text>
+          </Pressable>
+
+          <Animated.View style={{ opacity: fadeAnim }}>
+            <Text style={styles.balanceLabel}>Total Balance ({activeWallet.name})</Text>
+            <Text style={styles.balance}>₹{balance.toLocaleString('en-IN')}</Text>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryLabel}>↘  Income</Text>
+                <Text style={styles.summaryValue}>₹{income.toLocaleString('en-IN')}</Text>
+              </View>
+              <View style={styles.expenseSummaryCardLightRed}>
+                <Text style={styles.expenseSummaryLabelLightRed}>↗  Expense</Text>
+                <Text style={styles.expenseSummaryValueLightRed}>₹{expense.toLocaleString('en-IN')}</Text>
+              </View>
             </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>↗  Expense</Text>
-              <Text style={styles.summaryValue}>₹{expense.toLocaleString('en-IN')}</Text>
-            </View>
-          </View>
+          </Animated.View>
         </View>
 
         <View style={styles.homeSummarySection}>
@@ -280,7 +378,7 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.navigation}>
+      <View style={[styles.navigation, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}>
         {[
           ['Home', 'home'],
           ['Reports', 'report'],
@@ -295,12 +393,51 @@ export function HomeScreen({ transactions, budgets, user, darkMode = false, onAd
       </View>
 
       {/* Floating Add Button */}
-      <Pressable style={({ pressed }) => [styles.floatingButton, pressed && styles.pressedButton]} onPress={onAdd}>
+      <Pressable style={({ pressed }) => [styles.floatingButton, { bottom: 80 + insets.bottom }, pressed && styles.pressedButton]} onPress={onAdd}>
         <AppIcon name="plus" size={31} />
       </Pressable>
 
       {/* Floating Voice Mic Button */}
       <VoiceMicButton darkMode={false} categories={[...categories, ...customCategories]} onTransactionParsed={onVoiceAdd} />
+
+      {/* Centered Wallet Dropdown Modal */}
+      <Modal visible={showWalletDropdown} transparent animationType="fade" onRequestClose={() => setShowWalletDropdown(false)}>
+        <Pressable style={styles.modalCenterBackdrop} onPress={() => setShowWalletDropdown(false)}>
+          <View style={[styles.walletModalCard, { width: '82%' }, darkMode && { backgroundColor: '#091510', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' }]}>
+            <Text style={[styles.walletModalTitle, darkMode && { color: '#fff' }]}>Select Wallet</Text>
+            <ScrollView style={{ maxHeight: 260 }}>
+              {wallets.map((w) => {
+                const isSel = w.id === activeWallet.id;
+                return (
+                  <Pressable
+                    key={w.id}
+                    onPress={() => {
+                      onSelectWallet?.(w.id);
+                      setShowWalletDropdown(false);
+                    }}
+                    style={[
+                      styles.currencyOptionRow,
+                      isSel && styles.currencyOptionSelected,
+                      darkMode && isSel && { backgroundColor: 'rgba(16,185,129,0.2)' },
+                    ]}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <AppIcon name="wallet" color={isSel ? '#10B981' : '#64748B'} size={18} />
+                      <Text style={[styles.currencyOptionText, darkMode && { color: '#fff' }, isSel && { color: green, fontWeight: '800' }]}>
+                        {w.name}
+                      </Text>
+                    </View>
+                    {w.isDefault && <Text style={styles.walletDefaultBadge}>Default</Text>}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Pressable style={[styles.sheetClose, { marginTop: 14 }]} onPress={() => setShowWalletDropdown(false)}>
+              <Text style={styles.sheetCloseText}>Close</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

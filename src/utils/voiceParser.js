@@ -139,6 +139,71 @@ function determineType(words, categoryType) {
   return { type, keywordIndices };
 }
 
+const MONTHS = {
+  january: 0, jan: 0,
+  february: 1, feb: 1,
+  march: 2, mar: 2,
+  april: 3, apr: 3,
+  may: 4,
+  june: 5, jun: 5,
+  july: 6, jul: 6,
+  august: 7, aug: 7,
+  september: 8, sep: 8, sept: 8,
+  october: 9, oct: 9,
+  november: 10, nov: 10,
+  december: 11, dec: 11,
+};
+
+function extractDate(words) {
+  const usedIndices = new Set();
+  const text = words.join(' ');
+  const now = new Date();
+  let targetDate = null;
+
+  if (text.includes('yesterday') || text.includes('beeta hua kal')) {
+    targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 10, 0, 0);
+    words.forEach((w, i) => {
+      if (w === 'yesterday' || w === 'kal' || w === 'beeta' || w === 'hua') usedIndices.add(i);
+    });
+    return { createdAt: targetDate.toISOString(), usedIndices };
+  }
+
+  for (let i = 0; i < words.length; i++) {
+    const cleanWord = words[i];
+    const dayStr = cleanWord.replace(/(st|nd|rd|th)$/, '');
+    const dayNum = parseInt(dayStr, 10);
+
+    if (i + 1 < words.length && !isNaN(dayNum) && dayNum >= 1 && dayNum <= 31 && MONTHS[words[i + 1]] !== undefined) {
+      targetDate = new Date(now.getFullYear(), MONTHS[words[i + 1]], dayNum, 10, 0, 0);
+      usedIndices.add(i);
+      usedIndices.add(i + 1);
+      if (i > 0 && (words[i - 1] === 'on' || words[i - 1] === 'ko' || words[i - 1] === 'par')) {
+        usedIndices.add(i - 1);
+      }
+      if (i + 2 < words.length && words[i + 2] === 'tarikh') {
+        usedIndices.add(i + 2);
+      }
+      return { createdAt: targetDate.toISOString(), usedIndices };
+    }
+
+    if (i + 1 < words.length && MONTHS[cleanWord] !== undefined) {
+      const nextDayStr = words[i + 1].replace(/(st|nd|rd|th)$/, '');
+      const nextDayNum = parseInt(nextDayStr, 10);
+      if (!isNaN(nextDayNum) && nextDayNum >= 1 && nextDayNum <= 31) {
+        targetDate = new Date(now.getFullYear(), MONTHS[cleanWord], nextDayNum, 10, 0, 0);
+        usedIndices.add(i);
+        usedIndices.add(i + 1);
+        if (i > 0 && (words[i - 1] === 'on' || words[i - 1] === 'ko' || words[i - 1] === 'par')) {
+          usedIndices.add(i - 1);
+        }
+        return { createdAt: targetDate.toISOString(), usedIndices };
+      }
+    }
+  }
+
+  return { createdAt: now.toISOString(), usedIndices };
+}
+
 export function parseVoiceInput(text, allCategories) {
   if (!text || typeof text !== 'string') {
     return { success: false, error: 'Could not detect amount. Please say an amount.' };
@@ -163,14 +228,16 @@ export function parseVoiceInput(text, allCategories) {
   );
 
   const { type, keywordIndices } = determineType(words, categoryType);
+  const { createdAt, usedIndices: dateIndices } = extractDate(words);
 
   const allUsedIndices = new Set([
     ...amountIndices,
     ...categoryIndices,
     ...keywordIndices,
+    ...dateIndices,
   ]);
 
-  const FILLER_WORDS = ['on', 'for', 'in', 'ka', 'ki', 'ke', 'me', 'pe', 'se', 'ko', 'the', 'a', 'an'];
+  const FILLER_WORDS = ['on', 'for', 'in', 'ka', 'ki', 'ke', 'me', 'pe', 'se', 'ko', 'the', 'a', 'an', 'tarikh'];
 
   const remainingWords = words.filter(
     (word, i) => !allUsedIndices.has(i) && !FILLER_WORDS.includes(word)
@@ -187,7 +254,7 @@ export function parseVoiceInput(text, allCategories) {
       amount,
       category: category || defaultCategory,
       note,
-      createdAt: new Date().toISOString(),
+      createdAt,
     },
   };
 }

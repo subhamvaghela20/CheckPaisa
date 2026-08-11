@@ -6,11 +6,20 @@ import { categories as defaultCategories } from '../data/appData';
 import { formatDate, formatTime } from '../utils/date';
 import { styles } from '../styles/styles';
 
-export function TransactionFormScreen({ transaction, categories = defaultCategories, darkMode = false, onClose, onSave }) {
+export function TransactionFormScreen({
+  transaction,
+  categories = defaultCategories,
+  wallets = [],
+  activeWalletId = 'default_wallet',
+  darkMode = false,
+  onClose,
+  onSave,
+}) {
   const editing = Boolean(transaction);
   const [type, setType] = useState(transaction?.type || 'Expense');
   const [amount, setAmount] = useState(transaction ? String(transaction.amount) : '');
   const [category, setCategory] = useState(transaction?.category || 'Food');
+  const [walletId, setWalletId] = useState(transaction?.walletId || activeWalletId);
   const [note, setNote] = useState(transaction?.note || '');
   const [transactionDate, setTransactionDate] = useState(transaction?.createdAt ? new Date(transaction.createdAt) : new Date());
   const [pickerMode, setPickerMode] = useState(null);
@@ -45,7 +54,15 @@ export function TransactionFormScreen({ transaction, categories = defaultCategor
   const save = () => {
     const numericAmount = Number(amount);
     if (!numericAmount || numericAmount <= 0) return Alert.alert('Enter an amount', 'Please enter an amount greater than zero.');
-    onSave({ id: transaction?.id || String(Date.now()), type, amount: numericAmount, category, note: note.trim(), createdAt: transactionDate.toISOString() });
+    onSave({
+      id: transaction?.id || String(Date.now()),
+      type,
+      amount: numericAmount,
+      category,
+      note: note.trim(),
+      createdAt: transactionDate.toISOString(),
+      walletId,
+    });
   };
 
   return (
@@ -101,6 +118,34 @@ export function TransactionFormScreen({ transaction, categories = defaultCategor
               </Pressable>
             </View>
             {pickerMode && <DateTimePicker value={transactionDate} mode={pickerMode} display="default" onChange={updateDate} />}
+
+            {/* Wallet Selection Pill List */}
+            {wallets.length > 0 && (
+              <View style={{ marginTop: 16 }}>
+                <Text style={[styles.dateTimeLabel, { marginBottom: 6 }, darkMode && { color: '#94A3B8' }]}>Wallet / Account</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                  {wallets.map((w) => {
+                    const isSel = w.id === walletId;
+                    return (
+                      <Pressable
+                        key={w.id}
+                        onPress={() => setWalletId(w.id)}
+                        style={[
+                          styles.walletPill,
+                          { backgroundColor: darkMode ? 'rgba(4,12,8,0.8)' : '#F1F5F9', borderColor: '#CBD5E1' },
+                          isSel && { backgroundColor: '#10B981', borderColor: '#10B981' },
+                        ]}
+                      >
+                        <Text style={[styles.walletPillText, { color: darkMode ? '#94A3B8' : '#334155' }, isSel && { color: '#FFF', fontWeight: '800' }]}>
+                          {w.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
             <Text style={[styles.categoryHeading, darkMode && { color: '#FFF' }]}>{type} Category</Text>
             <View style={styles.categoryGrid}>
               {filteredCategories.map((item) => {

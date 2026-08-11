@@ -470,5 +470,44 @@ export const styles = StyleSheet.create({
   darkDateGroupHeaderLabel: { fontSize: 13, fontWeight: '700', color: '#10B981' },
   seeMoreButton: { height: 48, borderRadius: 16, backgroundColor: '#E6F9F2', alignItems: 'center', justifyContent: 'center', marginHorizontal: 20, marginTop: 12, marginBottom: 20, borderWidth: 1, borderColor: green },
   darkSeeMoreButton: { backgroundColor: 'rgba(15, 27, 21, 0.85)', borderColor: 'rgba(16, 185, 129, 0.3)' },
-  seeMoreText: { fontSize: 14, fontWeight: '800', color: green }
+  seeMoreText: { fontSize: 14, fontWeight: '800', color: green },
+
+  // Wallet Selector & Light Red Expense Box Styles
+  walletBarContainer: { marginVertical: 12 },
+  walletBarScroll: { paddingHorizontal: 4, gap: 8 },
+  walletPill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', flexDirection: 'row', alignItems: 'center', gap: 6 },
+  walletPillActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+  darkWalletPill: { backgroundColor: 'rgba(15, 27, 21, 0.8)', borderColor: 'rgba(16, 185, 129, 0.3)', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  darkWalletPillActive: { backgroundColor: '#10B981', borderColor: '#10B981' },
+  walletPillText: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '600' },
+  walletPillTextActive: { color: '#0F172A', fontWeight: '800' },
+  darkWalletPillText: { color: '#94A3B8', fontSize: 12, fontWeight: '600' },
+  darkWalletPillTextActive: { color: '#000000', fontWeight: '800' },
+  walletDefaultBadge: { fontSize: 10, fontWeight: '800', color: '#10B981', backgroundColor: '#E6F9F2', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 6 },
+  
+  // Light Red Expense Card Styles
+  expenseSummaryCardLightRed: { flex: 1, height: 64, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5' },
+  expenseSummaryLabelLightRed: { color: '#DC2626', fontSize: 12, fontWeight: '700' },
+  expenseSummaryValueLightRed: { color: '#991B1B', fontSize: 16, fontWeight: '800', marginTop: 3 },
+  darkExpenseSummaryCardLightRed: { flex: 1, height: 64, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: 'rgba(239, 68, 68, 0.16)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.35)' },
+
+  // Wallet Management Modal Styles
+  walletModalCard: { width: '90%', backgroundColor: '#fff', borderRadius: 24, padding: 22, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 16, elevation: 6, maxHeight: '85%' },
+  walletModalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 14, textAlign: 'center' },
+  walletItemCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAFC', borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  darkWalletItemCard: { backgroundColor: 'rgba(15, 27, 21, 0.8)', borderColor: 'rgba(16, 185, 129, 0.25)' },
+  walletItemName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  walletItemSub: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  // Centered Wallet Dropdown Pill Styles (Matching Attachment)
+  walletDropdownPill: { alignSelf: 'center', backgroundColor: '#E6F9F2', paddingHorizontal: 16, paddingVertical: 9, borderRadius: 24, flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 12, borderWidth: 1, borderColor: '#A7F3D0', shadowColor: '#10B981', shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 },
+  darkWalletDropdownPill: { alignSelf: 'center', backgroundColor: 'rgba(15, 27, 21, 0.85)', paddingHorizontal: 16, paddingVertical: 9, borderRadius: 24, flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 12, borderWidth: 1.5, borderColor: 'rgba(16, 185, 129, 0.35)', shadowColor: '#10B981', shadowOpacity: 0.2, shadowRadius: 8, elevation: 3 },
+  walletDropdownText: { color: '#047857', fontSize: 14, fontWeight: '800' },
+  darkWalletDropdownText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  walletDropdownChevron: { color: '#10B981', fontSize: 14, fontWeight: '800' },
+
+  // Keyboard Safe Centered Modal Backdrop
+  modalCenterBackdrop: { flex: 1, backgroundColor: 'rgba(17, 27, 44, 0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+
+  walletActionIconBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  darkWalletActionIconBtn: { backgroundColor: 'rgba(255,255,255,0.1)' }
 });

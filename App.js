@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BackHandler, SafeAreaView } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { categories as defaultCategories } from './src/data/appData';
 import { AdvancedReportsScreen } from './src/screens/AdvancedReportsScreen';
@@ -15,17 +16,20 @@ import { SplashScreen } from './src/screens/SplashScreen';
 import { TransactionDetailsScreen } from './src/screens/TransactionDetailsScreen';
 import { TransactionFormScreen } from './src/screens/TransactionFormScreen';
 import {
+  DEFAULT_WALLETS,
   deleteUserData,
   loadBudgets,
   loadCategories,
   loadDarkMode,
   loadTransactions,
   loadUser,
+  loadWallets,
   saveBudgets,
   saveCategories,
   saveDarkMode,
   saveTransactions,
   saveUser,
+  saveWallets,
 } from './src/utils/storage';
 import { styles } from './src/styles/styles';
 
@@ -55,6 +59,8 @@ export default function App() {
   const [customCategories, setCustomCategories] = useState(defaultCategories);
   const [user, setUser] = useState({ name: 'Siddharajsinh', email: 'siddharajsinh@example.com' });
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [wallets, setWallets] = useState(DEFAULT_WALLETS);
+  const [activeWalletId, setActiveWalletId] = useState('default_wallet');
 
   const currentScreen = history[history.length - 1] || SCREENS.HOME;
 
@@ -125,6 +131,10 @@ export default function App() {
       loadBudgets(activeUser.email).then((storedBudgets) => {
         if (storedBudgets) setBudgets(storedBudgets);
       });
+
+      loadWallets(activeUser.email).then((storedWallets) => {
+        if (Array.isArray(storedWallets) && storedWallets.length > 0) setWallets(storedWallets);
+      });
     });
 
     loadCategories().then((storedCats) => {
@@ -140,11 +150,12 @@ export default function App() {
     setUser(userData);
     await saveUser(userData);
 
-    const userTx = await loadTransactions(userData.email);
-    const userBudgets = await loadBudgets(userData.email);
-
-    setTransactions(userTx || []);
-    setBudgets(userBudgets || null);
+    loadTransactions(userData.email).then(setTransactions);
+    loadBudgets(userData.email).then(setBudgets);
+    loadWallets(userData.email).then((w) => {
+      if (Array.isArray(w) && w.length > 0) setWallets(w);
+    });
+    saveUser(userData);
     setHistory([SCREENS.HOME]);
   };
 
@@ -153,11 +164,12 @@ export default function App() {
     setUser(guestUser);
     await saveUser(guestUser);
 
-    const userTx = await loadTransactions(guestUser.email);
-    const userBudgets = await loadBudgets(guestUser.email);
-
-    setTransactions(userTx || []);
-    setBudgets(userBudgets || null);
+    loadTransactions(guestUser.email).then(setTransactions);
+    loadBudgets(guestUser.email).then(setBudgets);
+    loadWallets(guestUser.email).then((w) => {
+      if (Array.isArray(w) && w.length > 0) setWallets(w);
+    });
+    saveUser(guestUser);
     setHistory([SCREENS.HOME]);
   };
 
@@ -200,8 +212,12 @@ export default function App() {
   };
 
   const handleAddTransaction = (transaction) => {
+    const txWithWallet = {
+      ...transaction,
+      walletId: transaction.walletId || activeWalletId || 'default_wallet',
+    };
     setTransactions((current) => {
-      const updated = [transaction, ...current];
+      const updated = [txWithWallet, ...current];
       saveTransactions(updated, user.email);
       return updated;
     });
@@ -209,11 +225,78 @@ export default function App() {
   };
 
   const handleVoiceAdd = (transaction) => {
+    const txWithWallet = {
+      ...transaction,
+      walletId: transaction.walletId || activeWalletId || 'default_wallet',
+    };
     setTransactions((current) => {
-      const updated = [transaction, ...current];
+      const updated = [txWithWallet, ...current];
       saveTransactions(updated, user.email);
       return updated;
     });
+  };
+
+  // Wallet Handlers
+  const handleSelectWallet = (walletId) => {
+    setActiveWalletId(walletId);
+  };
+
+  const handleAddWallet = ({ name, initialBalance }) => {
+    if (!name || !name.trim()) return;
+    const newWallet = {
+      id: String(Date.now()),
+      name: name.trim(),
+      initialBalance: Number(initialBalance) || 0,
+      isDefault: false,
+      createdAt: new Date().toISOString(),
+    };
+    setWallets((prev) => {
+      const updated = [...prev, newWallet];
+      saveWallets(updated, user.email);
+      return updated;
+    });
+    setActiveWalletId(newWallet.id);
+  };
+
+  const handleRenameWallet = (walletId, updatedFields) => {
+    const newName = typeof updatedFields === 'string' ? updatedFields : updatedFields?.name;
+    const newBalance = typeof updatedFields === 'object' ? updatedFields?.initialBalance : undefined;
+    if (!newName || !newName.trim()) return;
+
+    setWallets((prev) => {
+      const updated = prev.map((w) => {
+        if (w.id === walletId) {
+          return {
+            ...w,
+            name: newName.trim(),
+            initialBalance: newBalance !== undefined && newBalance !== '' ? Number(newBalance) || 0 : w.initialBalance,
+          };
+        }
+        return w;
+      });
+      saveWallets(updated, user.email);
+      return updated;
+    });
+  };
+
+  const handleDeleteWallet = (walletId) => {
+    const target = wallets.find((w) => w.id === walletId);
+    if (!target || target.isDefault || walletId === 'default_wallet') return;
+
+    const updatedWallets = wallets.filter((w) => w.id !== walletId);
+    setWallets(updatedWallets);
+    saveWallets(updatedWallets, user.email);
+
+    // Reassign deleted wallet's transactions to default wallet
+    setTransactions((prev) => {
+      const updatedTx = prev.map((tx) => (tx.walletId === walletId ? { ...tx, walletId: 'default_wallet' } : tx));
+      saveTransactions(updatedTx, user.email);
+      return updatedTx;
+    });
+
+    if (activeWalletId === walletId) {
+      setActiveWalletId('default_wallet');
+    }
   };
 
   const handleEditTransaction = (updatedTransaction) => {
@@ -285,6 +368,9 @@ export default function App() {
             user={user}
             darkMode={darkMode}
             customCategories={customCategories}
+            wallets={wallets}
+            activeWalletId={activeWalletId}
+            onSelectWallet={handleSelectWallet}
             onAdd={() => pushScreen(SCREENS.ADD)}
             onVoiceAdd={handleVoiceAdd}
             onOpenTransaction={openTransaction}
@@ -337,6 +423,12 @@ export default function App() {
             onToggleDarkMode={handleToggleDarkMode}
             notifications={notifications}
             onToggleNotifications={() => setNotifications((prev) => !prev)}
+            wallets={wallets}
+            activeWalletId={activeWalletId}
+            onSelectWallet={handleSelectWallet}
+            onAddWallet={handleAddWallet}
+            onRenameWallet={handleRenameWallet}
+            onDeleteWallet={handleDeleteWallet}
             onOpenEditBudget={() => pushScreen(SCREENS.EDIT_BUDGET)}
             onOpenManageCategories={() => pushScreen(SCREENS.MANAGE_CATEGORIES)}
             onUpdateProfile={handleUpdateProfile}
@@ -361,6 +453,8 @@ export default function App() {
         return (
           <TransactionFormScreen
             categories={customCategories}
+            wallets={wallets}
+            activeWalletId={activeWalletId}
             darkMode={darkMode}
             onClose={popScreen}
             onSave={handleAddTransaction}
@@ -400,6 +494,9 @@ export default function App() {
             user={user}
             darkMode={darkMode}
             customCategories={customCategories}
+            wallets={wallets}
+            activeWalletId={activeWalletId}
+            onSelectWallet={handleSelectWallet}
             onAdd={() => pushScreen(SCREENS.ADD)}
             onVoiceAdd={handleVoiceAdd}
             onOpenTransaction={openTransaction}
@@ -410,9 +507,11 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={[styles.screen, (currentScreen === SCREENS.SPLASH || currentScreen === SCREENS.LOGIN || darkMode) && styles.splashScreen]}>
-      <StatusBar style={currentScreen === SCREENS.SPLASH || (currentScreen === SCREENS.LOGIN && darkMode) || darkMode ? 'light' : 'dark'} />
-      {renderScreen()}
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <SafeAreaView style={[styles.screen, (currentScreen === SCREENS.SPLASH || currentScreen === SCREENS.LOGIN || darkMode) && styles.splashScreen]}>
+        <StatusBar style={currentScreen === SCREENS.SPLASH || (currentScreen === SCREENS.LOGIN && darkMode) || darkMode ? 'light' : 'dark'} />
+        {renderScreen()}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }

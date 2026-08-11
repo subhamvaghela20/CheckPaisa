@@ -10,6 +10,46 @@ const DEFAULT_REGISTERED_USERS = [
   { name: 'User', email: 'user@example.com', password: '1234' },
 ];
 
+export const DEFAULT_WALLETS = [
+  {
+    id: 'default_wallet',
+    name: 'Main Wallet',
+    initialBalance: 0,
+    isDefault: true,
+    createdAt: new Date().toISOString(),
+  },
+];
+
+function getWalletKey(email) {
+  const sanitized = email ? email.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'default';
+  return `@checkpaisa_wallets_${sanitized}`;
+}
+
+export async function loadWallets(email) {
+  try {
+    const key = getWalletKey(email);
+    const jsonValue = await AsyncStorage.getItem(key);
+    if (jsonValue != null) {
+      const parsed = JSON.parse(jsonValue);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    return DEFAULT_WALLETS;
+  } catch (e) {
+    console.error('Failed to load wallets from storage:', e);
+    return DEFAULT_WALLETS;
+  }
+}
+
+export async function saveWallets(wallets, email) {
+  try {
+    const key = getWalletKey(email);
+    const jsonValue = JSON.stringify(wallets);
+    await AsyncStorage.setItem(key, jsonValue);
+  } catch (e) {
+    console.error('Failed to save wallets to storage:', e);
+  }
+}
+
 function getTxKey(email) {
   const sanitized = email ? email.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'default';
   return `@checkpaisa_tx_${sanitized}`;
@@ -110,8 +150,10 @@ export async function deleteUserData(email) {
   try {
     const txKey = getTxKey(email);
     const budgetKey = getBudgetKey(email);
+    const walletKey = getWalletKey(email);
     await AsyncStorage.removeItem(txKey);
     await AsyncStorage.removeItem(budgetKey);
+    await AsyncStorage.removeItem(walletKey);
 
     // Remove from registered users list if present
     const users = await loadRegisteredUsers();

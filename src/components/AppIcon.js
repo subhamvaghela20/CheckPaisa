@@ -11,6 +11,8 @@ export function AppIcon({ name, color = '#FFFFFF', size = 24 }) {
     home: <Path {...common} d="M3 10.5 12 3l9 7.5V21H3zM9 21v-6h6v6" />,
     report: <Path {...common} d="M20 12a8 8 0 1 1-8-8v8zM13 3a8 8 0 0 1 8 8h-8z" />,
     budget: <Path {...common} d="M4 7h16M6 4h12v16H6zM9 12h6M9 16h3" />,
+    wallet: <Path {...common} d="M21 4H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM16 12a2 2 0 1 0 4 0 2 2 0 0 0-4 0" />,
+    edit: <Path {...common} d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />,
     user: <Path {...common} d="M20 21a8 8 0 0 0-16 0M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8" />,
     back: <Path {...common} d="m14 18-6-6 6-6M8 12h12" />,
     mail: <Path {...common} d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM22 6l-10 7L2 6" />,
