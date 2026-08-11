@@ -4,7 +4,7 @@ dist/
 npm-debug.*
 yarn-debug.*
 yarn-error.*
-assets/
 .env
 .DS_Store
+
 

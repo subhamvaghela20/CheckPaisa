@@ -6,6 +6,7 @@ import {
   Text,
   View,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { AppIcon } from './AppIcon';
 import { parseVoiceInput } from '../utils/voiceParser';
@@ -46,6 +47,9 @@ export function VoiceMicButton({
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [toast, setToast] = useState(null);
+
+  const isListeningRef = useRef(false);
+  const transcriptRef = useRef('');
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseRef = useRef(null);
   const toastTimer = useRef(null);
@@ -79,8 +83,39 @@ export function VoiceMicButton({
   const showToast = useCallback((message, type) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast({ message, type });
-    toastTimer.current = setTimeout(() => setToast(null), 2500);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
   }, []);
+
+  const stopListeningAndProcess = useCallback(() => {
+    if (!isListeningRef.current) return;
+
+    isListeningRef.current = false;
+    setListening(false);
+    stopPulse();
+
+    if (SpeechModule) {
+      try {
+        SpeechModule.stop();
+      } catch (e) {}
+    }
+
+    const finalTranscript = transcriptRef.current.trim();
+    if (!finalTranscript) {
+      showToast("⚠️ Couldn't hear anything. Please try again.", 'error');
+      return;
+    }
+
+    const parsed = parseVoiceInput(finalTranscript, categories);
+    if (!parsed || !parsed.success) {
+      showToast(`⚠️ ${parsed?.error || 'Could not parse speech'}`, 'error');
+      return;
+    }
+
+    if (parsed.transaction) {
+      onTransactionParsed?.(parsed.transaction);
+      showToast(`✅ Added: ₹${parsed.transaction.amount} (${parsed.transaction.category})`, 'success');
+    }
+  }, [categories, onTransactionParsed, stopPulse, showToast]);
 
   const handlePressIn = useCallback(async () => {
     if (!SpeechModule) {
@@ -100,45 +135,38 @@ export function VoiceMicButton({
         );
         return;
       }
+
+      isListeningRef.current = true;
+      transcriptRef.current = '';
       setTranscript('');
       setListening(true);
       startPulse();
+
       SpeechModule.start({
         lang: 'en-IN',
         interimResults: true,
       });
     } catch (err) {
+      isListeningRef.current = false;
+      setListening(false);
       Alert.alert('Voice Error', 'Could not start speech recognition.');
     }
   }, [startPulse]);
 
   const handlePressOut = useCallback(() => {
-    if (!listening) return;
-    if (SpeechModule) {
-      try {
-        SpeechModule.stop();
-      } catch (e) {}
-    }
-    stopPulse();
-    setListening(false);
+    stopListeningAndProcess();
+  }, [stopListeningAndProcess]);
 
-    const finalTranscript = transcript.trim();
-    if (!finalTranscript) {
-      showToast("⚠️ Couldn't hear anything", 'error');
-      return;
-    }
+  const handleResult = useCallback((text) => {
+    transcriptRef.current = text;
+    setTranscript(text);
+  }, []);
 
-    const parsed = parseVoiceInput(finalTranscript, categories);
-    if (!parsed || !parsed.success) {
-      showToast(`⚠️ ${parsed?.error || 'Could not parse speech'}`, 'error');
-      return;
+  const handleError = useCallback(() => {
+    if (isListeningRef.current) {
+      stopListeningAndProcess();
     }
-
-    if (parsed.transaction) {
-      onTransactionParsed?.(parsed.transaction);
-      showToast(`✅ Added: ₹${parsed.transaction.amount} → ${parsed.transaction.category}`, 'success');
-    }
-  }, [listening, transcript, categories, onTransactionParsed, stopPulse, showToast]);
+  }, [stopListeningAndProcess]);
 
   const buttonBg = darkMode ? '#10B981' : '#11BD88';
   const buttonBorder = darkMode
@@ -149,11 +177,8 @@ export function VoiceMicButton({
     <>
       {listening && (
         <SpeechEventListener
-          onResult={(text) => setTranscript(text)}
-          onError={() => {
-            setListening(false);
-            stopPulse();
-          }}
+          onResult={handleResult}
+          onError={handleError}
         />
       )}
 
@@ -182,11 +207,11 @@ export function VoiceMicButton({
         <AppIcon name="mic" color="#fff" size={26} />
       </Pressable>
 
-      <Modal visible={listening} transparent animationType="fade">
+      <Modal visible={listening} transparent animationType="fade" onRequestClose={stopListeningAndProcess}>
         <View
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -209,7 +234,7 @@ export function VoiceMicButton({
             style={{
               color: '#fff',
               fontSize: 22,
-              fontWeight: '600',
+              fontWeight: '700',
               marginTop: 28,
             }}
           >
@@ -219,27 +244,39 @@ export function VoiceMicButton({
           {transcript ? (
             <Text
               style={{
-                color: 'rgba(255, 255, 255, 0.85)',
+                color: 'rgba(255, 255, 255, 0.9)',
                 fontSize: 16,
                 marginTop: 16,
                 paddingHorizontal: 32,
                 textAlign: 'center',
+                fontWeight: '500',
               }}
             >
-              {transcript}
+              "{transcript}"
             </Text>
           ) : null}
 
-          <Text
+          <TouchableOpacity
+            onPress={stopListeningAndProcess}
             style={{
-              color: 'rgba(255, 255, 255, 0.5)',
-              fontSize: 14,
               position: 'absolute',
               bottom: 60,
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+              borderRadius: 20,
             }}
           >
-            Release to add transaction
-          </Text>
+            <Text
+              style={{
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: '600',
+              }}
+            >
+              Release or tap to finish
+            </Text>
+          </TouchableOpacity>
         </View>
       </Modal>
 
@@ -257,7 +294,7 @@ export function VoiceMicButton({
             elevation: 10,
           }}
         >
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
             {toast.message}
           </Text>
         </View>
