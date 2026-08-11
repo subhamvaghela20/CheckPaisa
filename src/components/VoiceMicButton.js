@@ -8,6 +8,7 @@ import {
   Alert,
   TouchableOpacity,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from './AppIcon';
 import { parseVoiceInput } from '../utils/voiceParser';
 
@@ -168,6 +169,7 @@ export function VoiceMicButton({
     }
   }, [stopListeningAndProcess]);
 
+  const insets = useSafeAreaInsets();
   const buttonBg = darkMode ? '#10B981' : '#11BD88';
   const buttonBorder = darkMode
     ? { borderWidth: 1.5, borderColor: 'rgba(16, 185, 129, 0.4)' }
@@ -188,7 +190,7 @@ export function VoiceMicButton({
         style={{
           position: 'absolute',
           left: 24,
-          bottom: 80,
+          bottom: 80 + insets.bottom,
           width: 52,
           height: 52,
           borderRadius: 26,
