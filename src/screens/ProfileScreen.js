@@ -386,9 +386,9 @@ export function ProfileScreen({
         </View>
       </ScrollView>
 
-      {/* Edit Profile Popup Modal */}
+      {/* Edit Profile Popup Modal (Centered & Keyboard Safe) */}
       <Modal visible={showEditProfileModal} transparent animationType="fade" onRequestClose={() => setShowEditProfileModal(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setShowEditProfileModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalCenterBackdrop}>
           <Pressable style={darkMode ? styles.darkEditProfileModalCard : styles.currencyModalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={[styles.currencyModalTitle, darkMode && { color: '#FFF' }]}>Edit Profile Details</Text>
 
@@ -421,7 +421,7 @@ export function ProfileScreen({
               </Pressable>
             </View>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Currency Selection Modal */}

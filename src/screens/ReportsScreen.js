@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { AppIcon } from '../components/AppIcon';
@@ -25,6 +26,7 @@ function describeArc(x, y, radius, startAngle, endAngle) {
 }
 
 export function ReportsScreen({ transactions = [], darkMode = false, onAdd, onOpenTransaction, onOpenAdvanced, onNavigate }) {
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('Reports');
   const [reportTab, setReportTab] = useState('breakdown');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -66,7 +68,7 @@ export function ReportsScreen({ transactions = [], darkMode = false, onAdd, onOp
 
   const innerContent = (
     <>
-      <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.homeMainScrollContent, { paddingBottom: 110 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.homeMainScrollContent, { paddingBottom: 120 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         {/* Top Header */}
         <View style={styles.reportsHeaderContainer}>
           <Text style={[styles.reportsTitle, darkMode && { color: '#FFF' }]}>Reports</Text>
@@ -246,7 +248,7 @@ export function ReportsScreen({ transactions = [], darkMode = false, onAdd, onOp
 
       {/* Bottom Navigation */}
       {darkMode ? (
-        <View style={styles.darkHomeNavContainer}>
+        <View style={[styles.darkHomeNavContainer, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}>
           {[
             ['Home', 'home'],
             ['Reports', 'report'],
@@ -260,7 +262,7 @@ export function ReportsScreen({ transactions = [], darkMode = false, onAdd, onOp
           ))}
         </View>
       ) : (
-        <View style={styles.navigation}>
+        <View style={[styles.navigation, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}>
           {[
             ['Home', 'home'],
             ['Reports', 'report'],
@@ -276,7 +278,7 @@ export function ReportsScreen({ transactions = [], darkMode = false, onAdd, onOp
       )}
 
       {/* Floating Add Button */}
-      <Pressable style={({ pressed }) => [styles.floatingButton, pressed && styles.pressedButton]} onPress={onAdd}>
+      <Pressable style={({ pressed }) => [styles.floatingButton, { bottom: 80 + insets.bottom }, pressed && styles.pressedButton]} onPress={onAdd}>
         <AppIcon name="plus" size={31} />
       </Pressable>
     </>

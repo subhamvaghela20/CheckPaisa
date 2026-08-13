@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '../components/AppIcon';
 import { categories } from '../data/appData';
@@ -8,6 +9,7 @@ import { green, styles } from '../styles/styles';
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export function BudgetScreen({ transactions = [], budgets = null, darkMode = false, onOpenEditBudget, onAdd, onOpenTransaction, onNavigate }) {
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('Budget');
   const [currentDate] = useState(new Date());
 
@@ -46,7 +48,7 @@ export function BudgetScreen({ transactions = [], budgets = null, darkMode = fal
 
   const innerContent = (
     <>
-      <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.homeMainScrollContent, { paddingBottom: 110 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.homeMainScrollContent, { paddingBottom: 120 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         {/* Top Header */}
         <View style={styles.reportsHeaderContainer}>
           <Text style={[styles.reportsTitle, darkMode && { color: '#FFF' }]}>Budget Alert</Text>
@@ -182,7 +184,7 @@ export function BudgetScreen({ transactions = [], budgets = null, darkMode = fal
 
       {/* Bottom Navigation */}
       {darkMode ? (
-        <View style={styles.darkHomeNavContainer}>
+        <View style={[styles.darkHomeNavContainer, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}>
           {[
             ['Home', 'home'],
             ['Reports', 'report'],
@@ -196,7 +198,7 @@ export function BudgetScreen({ transactions = [], budgets = null, darkMode = fal
           ))}
         </View>
       ) : (
-        <View style={styles.navigation}>
+        <View style={[styles.navigation, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}>
           {[
             ['Home', 'home'],
             ['Reports', 'report'],
@@ -212,7 +214,7 @@ export function BudgetScreen({ transactions = [], budgets = null, darkMode = fal
       )}
 
       {/* Floating Add Button */}
-      <Pressable style={({ pressed }) => [styles.floatingButton, pressed && styles.pressedButton]} onPress={onAdd}>
+      <Pressable style={({ pressed }) => [styles.floatingButton, { bottom: 80 + insets.bottom }, pressed && styles.pressedButton]} onPress={onAdd}>
         <AppIcon name="plus" size={31} />
       </Pressable>
     </>

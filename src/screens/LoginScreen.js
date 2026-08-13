@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '../components/AppIcon';
 import { CustomAlertModal } from '../components/CustomAlertModal';
@@ -109,7 +109,8 @@ export function LoginScreen({ darkMode = false, onLoginSuccess, onGuestContinue 
       {/* Light Mode Layout */}
       {!darkMode ? (
         <View style={styles.lightAuthContainer}>
-          <ScrollView contentContainerStyle={styles.exactAuthScrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={[styles.exactAuthScrollContent, { paddingBottom: 140 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <View style={styles.lightAuthCard}>
               {/* Logo Header */}
               <View style={styles.exactAuthLogoHeaderRow}>
@@ -226,13 +227,15 @@ export function LoginScreen({ darkMode = false, onLoginSuccess, onGuestContinue 
               <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600', textAlign: 'center' }}>Continue as Guest ➔</Text>
             </Pressable>
           </ScrollView>
+        </KeyboardAvoidingView>
         </View>
       ) : (
         /* Dark Mode Layout */
         <LinearGradient colors={['#0B2E21', '#041710', '#010805']} style={styles.exactAuthContainer}>
           <View style={styles.exactAuthGlowTopRight} pointerEvents="none" />
 
-          <ScrollView contentContainerStyle={styles.exactAuthScrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={[styles.exactAuthScrollContent, { paddingBottom: 140 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <View style={styles.exactAuthCard}>
               {/* Logo Header */}
               <View style={styles.exactAuthLogoHeaderRow}>
@@ -349,6 +352,7 @@ export function LoginScreen({ darkMode = false, onLoginSuccess, onGuestContinue 
               <Text style={{ fontSize: 13, color: '#94A3B8', fontWeight: '600', textAlign: 'center' }}>Continue as Guest ➔</Text>
             </Pressable>
           </ScrollView>
+        </KeyboardAvoidingView>
         </LinearGradient>
       )}
 
