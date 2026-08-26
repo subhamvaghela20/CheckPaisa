@@ -205,3 +205,31 @@ export async function saveDarkMode(isDark) {
     console.error('Failed to save dark mode preference:', e);
   }
 }
+
+function getSetupKey(email) {
+  const sanitized = email ? email.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'default';
+  return `@checkpaisa_setup_done_${sanitized}`;
+}
+
+export async function loadSetupCompleted(email) {
+  try {
+    const key = getSetupKey(email);
+    const value = await AsyncStorage.getItem(key);
+    return value === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+export async function saveSetupCompleted(email, isCompleted = true) {
+  try {
+    const key = getSetupKey(email);
+    if (isCompleted) {
+      await AsyncStorage.setItem(key, 'true');
+    } else {
+      await AsyncStorage.removeItem(key);
+    }
+  } catch (e) {
+    console.error('Failed to save setup completed:', e);
+  }
+}

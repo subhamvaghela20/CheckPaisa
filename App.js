@@ -7,6 +7,7 @@ import { AdvancedReportsScreen } from './src/screens/AdvancedReportsScreen';
 import { BudgetScreen } from './src/screens/BudgetScreen';
 import { EditBudgetScreen } from './src/screens/EditBudgetScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { InitialSetupScreen } from './src/screens/InitialSetupScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { ManageCategoriesScreen } from './src/screens/ManageCategoriesScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
@@ -21,12 +22,14 @@ import {
   loadBudgets,
   loadCategories,
   loadDarkMode,
+  loadSetupCompleted,
   loadTransactions,
   loadUser,
   loadWallets,
   saveBudgets,
   saveCategories,
   saveDarkMode,
+  saveSetupCompleted,
   saveTransactions,
   saveUser,
   saveWallets,
@@ -37,6 +40,7 @@ const SCREENS = {
   SPLASH: 'splash',
   ONBOARDING: 'onboarding',
   LOGIN: 'login',
+  INITIAL_SETUP: 'initial_setup',
   HOME: 'home',
   REPORTS: 'reports',
   ADVANCED_REPORTS: 'advanced_reports',
@@ -89,7 +93,12 @@ export default function App() {
   // Hardware Back Button Handler
   useEffect(() => {
     const onHardwareBack = () => {
-      if (currentScreen === SCREENS.SPLASH || currentScreen === SCREENS.ONBOARDING || currentScreen === SCREENS.LOGIN) {
+      if (
+        currentScreen === SCREENS.SPLASH ||
+        currentScreen === SCREENS.ONBOARDING ||
+        currentScreen === SCREENS.LOGIN ||
+        currentScreen === SCREENS.INITIAL_SETUP
+      ) {
         return false;
       }
 
@@ -150,12 +159,38 @@ export default function App() {
     setUser(userData);
     await saveUser(userData);
 
-    loadTransactions(userData.email).then(setTransactions);
-    loadBudgets(userData.email).then(setBudgets);
-    loadWallets(userData.email).then((w) => {
-      if (Array.isArray(w) && w.length > 0) setWallets(w);
-    });
-    saveUser(userData);
+    const txs = await loadTransactions(userData.email);
+    setTransactions(txs);
+
+    const b = await loadBudgets(userData.email);
+    setBudgets(b);
+
+    const w = await loadWallets(userData.email);
+    if (Array.isArray(w) && w.length > 0) {
+      setWallets(w);
+      setActiveWalletId(w[0].id);
+    }
+
+    const isSetupDone = await loadSetupCompleted(userData.email);
+
+    // If setup not completed yet for registered user (not guest):
+    if (!isSetupDone && !userData.isGuest) {
+      setHistory([SCREENS.INITIAL_SETUP]);
+    } else {
+      setHistory([SCREENS.HOME]);
+    }
+  };
+
+  const handleCompleteInitialSetup = async ({ wallet, budgets: newBudgets }) => {
+    const updatedWallets = [wallet];
+    setWallets(updatedWallets);
+    setActiveWalletId(wallet.id);
+    await saveWallets(updatedWallets, user.email);
+
+    setBudgets(newBudgets);
+    await saveBudgets(newBudgets, user.email);
+
+    await saveSetupCompleted(user.email, true);
     setHistory([SCREENS.HOME]);
   };
 
@@ -358,6 +393,14 @@ export default function App() {
             darkMode={darkMode}
             onLoginSuccess={handleLoginSuccess}
             onGuestContinue={handleGuestContinue}
+          />
+        );
+      case SCREENS.INITIAL_SETUP:
+        return (
+          <InitialSetupScreen
+            userName={user.name}
+            darkMode={darkMode}
+            onCompleteSetup={handleCompleteInitialSetup}
           />
         );
       case SCREENS.HOME:
