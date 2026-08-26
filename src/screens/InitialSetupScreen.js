@@ -92,7 +92,7 @@ export function InitialSetupScreen({
       >
         {/* Step Progress Bar Header */}
         <View style={{ marginBottom: 24 }}>
-          <Text style={[styles.exactAuthTitleLine1, darkMode && { color: '#FFF' }]}>
+          <Text style={[styles.exactAuthTitleLine1, { color: darkMode ? '#FFF' : '#0F172A' }]}>
             Welcome, {userName}! 👋
           </Text>
           <Text style={[styles.exactAuthTitleLine2, { color: green }]}>
@@ -162,7 +162,7 @@ export function InitialSetupScreen({
 
             {/* Wallet Name */}
             <View style={styles.exactAuthInputGroup}>
-              <Text style={[styles.exactAuthFieldLabel, darkMode && { color: '#A7F3D0' }]}>
+              <Text style={[styles.exactAuthFieldLabel, { color: darkMode ? '#E2E8F0' : '#1E293B', fontWeight: '700' }]}>
                 Wallet Name
               </Text>
               <View
@@ -192,7 +192,7 @@ export function InitialSetupScreen({
 
             {/* Initial Balance */}
             <View style={styles.exactAuthInputGroup}>
-              <Text style={[styles.exactAuthFieldLabel, darkMode && { color: '#A7F3D0' }]}>
+              <Text style={[styles.exactAuthFieldLabel, { color: darkMode ? '#E2E8F0' : '#1E293B', fontWeight: '700' }]}>
                 Opening Balance (₹)
               </Text>
               <View style={[styles.lightAuthInputBox, darkMode && styles.darkEditInput]}>
@@ -297,7 +297,7 @@ export function InitialSetupScreen({
                     marginBottom: 4,
                   }}
                 >
-                  <Text style={[styles.exactAuthFieldLabel, darkMode && { color: '#A7F3D0' }]}>
+                  <Text style={[styles.exactAuthFieldLabel, { color: darkMode ? '#E2E8F0' : '#1E293B', fontWeight: '700' }]}>
                     {cat.name} (₹)
                   </Text>
                 </View>
@@ -315,22 +315,36 @@ export function InitialSetupScreen({
             ))}
 
             {/* Action Buttons */}
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
               <Pressable
-                style={[styles.addCatCancelBtn, { flex: 1 }]}
+                style={{
+                  flex: 1,
+                  height: 50,
+                  borderRadius: 25,
+                  backgroundColor: darkMode ? '#334155' : '#E2E8F0',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
                 onPress={() => setStep(1)}
               >
-                <Text style={styles.addCatCancelText}>‹ Back</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: darkMode ? '#FFF' : '#334155' }}>
+                  Back
+                </Text>
               </Pressable>
               <Pressable
-                style={[styles.exactAuthSubmitTouchable, { flex: 2, marginTop: 0 }]}
+                style={{
+                  flex: 1,
+                  height: 50,
+                  borderRadius: 25,
+                  backgroundColor: green,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
                 onPress={handleFinishSetup}
               >
-                <View style={[styles.exactAuthSubmitPill, { backgroundColor: green }]}>
-                  <Text style={styles.exactAuthSubmitPillText}>
-                    Complete Setup & Launch 🚀
-                  </Text>
-                </View>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFF' }}>
+                  Save
+                </Text>
               </Pressable>
             </View>
           </View>
