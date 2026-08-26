@@ -139,7 +139,7 @@ export function InitialSetupScreen({
                   borderRadius: 30,
                   backgroundColor: '#E6F9F2',
                   alignItems: 'center',
-                  justify.content: 'center',
+                  justifyContent: 'center',
                   marginBottom: 10,
                 }}
               >
@@ -238,7 +238,7 @@ export function InitialSetupScreen({
                   borderRadius: 30,
                   backgroundColor: '#E6F9F2',
                   alignItems: 'center',
-                  justify.content: 'center',
+                  justifyContent: 'center',
                   marginBottom: 10,
                 }}
               >
