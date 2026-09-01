@@ -426,8 +426,8 @@ export function ProfileScreen({
 
       {/* Currency Selection Modal */}
       <Modal visible={showCurrencyModal} transparent animationType="fade" onRequestClose={() => setShowCurrencyModal(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setShowCurrencyModal(false)}>
-          <View style={darkMode ? styles.darkEditProfileModalCard : styles.currencyModalCard}>
+        <Pressable style={styles.modalCenterBackdrop} onPress={() => setShowCurrencyModal(false)}>
+          <Pressable style={darkMode ? styles.darkEditProfileModalCard : styles.currencyModalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={[styles.currencyModalTitle, darkMode && { color: '#FFF' }]}>Select Preferred Currency</Text>
             {CURRENCIES.map((curr) => (
               <Pressable
@@ -442,7 +442,7 @@ export function ProfileScreen({
                 {currency === curr.label && <Text style={{ color: green, fontWeight: '800' }}>✓</Text>}
               </Pressable>
             ))}
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -510,12 +510,12 @@ export function ProfileScreen({
       </Pressable>
 
       {/* Wallet Management Modal */}
-      <Modal visible={showWalletModal} transparent animationType="slide" onRequestClose={() => setShowWalletModal(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.walletModalCard, darkMode && { backgroundColor: '#091510', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' }]}>
+      <Modal visible={showWalletModal} transparent animationType="fade" onRequestClose={() => setShowWalletModal(false)}>
+        <Pressable style={styles.modalCenterBackdrop} onPress={() => setShowWalletModal(false)}>
+          <Pressable style={[styles.walletModalCard, darkMode && { backgroundColor: '#091510', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' }]} onPress={(e) => e.stopPropagation()}>
             <Text style={[styles.walletModalTitle, darkMode && { color: '#fff' }]}>Manage Wallets</Text>
             
-            <ScrollView style={{ maxHeight: 300 }}>
+            <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={true}>
               {wallets.map((w) => {
                 const wTx = transactions.filter((tx) => !tx.walletId || tx.walletId === w.id);
                 const wInc = wTx.filter((t) => t.type === 'Income').reduce((s, t) => s + t.amount, 0);
@@ -552,15 +552,15 @@ export function ProfileScreen({
                         <Pressable
                           style={[styles.walletActionIconBtn, styles.walletDeleteBtn]}
                           onPress={() => {
-                            showAlert(
-                              'Delete Wallet',
-                              `Are you sure you want to delete "${w.name}"? Transactions will be preserved in your default wallet.`,
-                              'trash',
-                              'Delete',
-                              'Cancel',
-                              true,
-                              () => onDeleteWallet?.(w.id)
-                            );
+                            showAlert({
+                              title: 'Delete Wallet',
+                              message: `Are you sure you want to delete "${w.name}"? Transactions will be preserved in your default wallet.`,
+                              icon: '🗑️',
+                              confirmText: 'Delete',
+                              cancelText: 'Cancel',
+                              isDestructive: true,
+                              onConfirm: () => onDeleteWallet?.(w.id),
+                            });
                           }}
                         >
                           <AppIcon name="other" color="#EF4444" size={16} />
@@ -582,11 +582,11 @@ export function ProfileScreen({
               <Text style={styles.addCatTriggerText}>+ Create New Wallet</Text>
             </Pressable>
 
-            <Pressable style={[styles.sheetClose, { marginTop: 10 }]} onPress={() => setShowWalletModal(false)}>
+            <Pressable style={[styles.sheetClose, { marginTop: 12 }]} onPress={() => setShowWalletModal(false)}>
               <Text style={styles.sheetCloseText}>Done</Text>
             </Pressable>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Create New Wallet Modal (Centered & Keyboard Safe) */}
