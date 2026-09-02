@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AppIcon } from '../components/AppIcon';
 import { categories as defaultCategories } from '../data/appData';
@@ -15,11 +16,14 @@ export function TransactionFormScreen({
   onClose,
   onSave,
 }) {
+  const insets = useSafeAreaInsets();
   const editing = Boolean(transaction);
   const [type, setType] = useState(transaction?.type || 'Expense');
   const [amount, setAmount] = useState(transaction ? String(transaction.amount) : '');
   const [category, setCategory] = useState(transaction?.category || 'Food');
-  const [walletId, setWalletId] = useState(transaction?.walletId || activeWalletId);
+  const [walletId, setWalletId] = useState(
+    transaction?.walletId || activeWalletId || (wallets.length > 0 ? wallets[0].id : 'default_wallet')
+  );
   const [note, setNote] = useState(transaction?.note || '');
   const [transactionDate, setTransactionDate] = useState(transaction?.createdAt ? new Date(transaction.createdAt) : new Date());
   const [pickerMode, setPickerMode] = useState(null);
@@ -27,6 +31,13 @@ export function TransactionFormScreen({
 
   const availableCategories = categories && categories.length > 0 ? categories : defaultCategories;
   const filteredCategories = availableCategories.filter((item) => item.type === type);
+
+  useEffect(() => {
+    if (!walletId && wallets.length > 0) {
+      const defaultW = wallets.find((w) => w.id === activeWalletId) || wallets[0];
+      if (defaultW) setWalletId(defaultW.id);
+    }
+  }, [wallets, activeWalletId]);
 
   useEffect(() => {
     const keyboardHideListener = Keyboard.addListener('keyboardDidHide', () => {
@@ -54,15 +65,31 @@ export function TransactionFormScreen({
   const save = () => {
     const numericAmount = Number(amount);
     if (!numericAmount || numericAmount <= 0) return Alert.alert('Enter an amount', 'Please enter an amount greater than zero.');
-    onSave({
-      id: transaction?.id || String(Date.now()),
-      type,
-      amount: numericAmount,
-      category,
-      note: note.trim(),
-      createdAt: transactionDate.toISOString(),
-      walletId,
-    });
+
+    const targetWalletId = walletId || activeWalletId || (wallets.length > 0 ? wallets[0].id : 'default_wallet');
+    const typeLabel = type === 'Income' ? 'Income' : 'Expense';
+
+    Alert.alert(
+      'Success',
+      `${typeLabel} entry added successfully!`,
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            onSave({
+              id: transaction?.id || String(Date.now()),
+              type,
+              amount: numericAmount,
+              category,
+              note: note.trim(),
+              createdAt: transactionDate.toISOString(),
+              walletId: targetWalletId,
+            });
+          },
+        },
+      ],
+      { cancelable: false }
+    );
   };
 
   return (
@@ -91,11 +118,11 @@ export function TransactionFormScreen({
             />
           </View>
         </View>
-        <View style={[styles.formPanel, darkMode && { backgroundColor: '#091510' }]}>
+        <View style={[styles.formPanel, { flex: 1 }, darkMode && { backgroundColor: '#091510' }]}>
           <ScrollView
             ref={scrollViewRef}
             style={styles.formPanelContent}
-            contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 240 }]}
+            contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 20 }]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
@@ -178,10 +205,23 @@ export function TransactionFormScreen({
               style={[styles.noteInput, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', color: '#FFF' }]}
               multiline
             />
-            <Pressable style={({ pressed }) => [styles.saveButton, darkMode && { backgroundColor: '#10B981' }, pressed && styles.pressedButton]} onPress={save}>
+          </ScrollView>
+
+          {/* Floating Action Button Footer */}
+          <View
+            style={{
+              paddingHorizontal: 20,
+              paddingTop: 10,
+              paddingBottom: Math.max(insets.bottom, 12),
+              backgroundColor: darkMode ? '#091510' : '#FFFFFF',
+              borderTopWidth: 1,
+              borderTopColor: darkMode ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
+            }}
+          >
+            <Pressable style={({ pressed }) => [styles.saveButton, { marginTop: 0 }, darkMode && { backgroundColor: '#10B981' }, pressed && styles.pressedButton]} onPress={save}>
               <Text style={[styles.saveButtonText, darkMode && { color: '#000' }]}>{editing ? 'Save Changes' : 'Add Transaction'}</Text>
             </Pressable>
-          </ScrollView>
+          </View>
         </View>
       </View>
     </KeyboardAvoidingView>

@@ -52,8 +52,21 @@ export function HomeScreen({
   const userName = user?.name || 'Siddharajsinh';
   const initial = userName.charAt(0).toUpperCase();
 
+  // Current calendar month expense calculation for Monthly Budget
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const currentMonthExpense = walletTransactions
+    .filter((item) => {
+      if (item.type !== 'Expense') return false;
+      const d = new Date(item.createdAt);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    })
+    .reduce((total, item) => total + item.amount, 0);
+
   const totalBudget = budgets ? Object.values(budgets).reduce((sum, b) => sum + Number(b), 0) : 0;
-  const budgetProgress = totalBudget > 0 ? Math.min((expense / totalBudget) * 100, 100) : 0;
+  const budgetProgress = totalBudget > 0 ? Math.min((currentMonthExpense / totalBudget) * 100, 100) : 0;
 
   const navigate = (tab) => {
     setActiveTab(tab);
@@ -123,18 +136,18 @@ export function HomeScreen({
               <View style={styles.budgetHeading}>
                 <Text style={styles.darkHomeBudgetTitle}>Monthly Budget</Text>
                 <Text style={styles.darkHomeBudgetAmount}>
-                  {totalBudget > 0 ? `₹${expense.toLocaleString('en-IN')} / ₹${totalBudget.toLocaleString('en-IN')}` : 'Not set'}
+                  {totalBudget > 0 ? `₹${currentMonthExpense.toLocaleString('en-IN')} / ₹${totalBudget.toLocaleString('en-IN')}` : 'Not set'}
                 </Text>
               </View>
               <View style={styles.darkHomeProgressTrack}>
                 <LinearGradient
-                  colors={expense > totalBudget && totalBudget > 0 ? ['#EF4444', '#DC2626'] : ['#10B981', '#059669']}
+                  colors={currentMonthExpense > totalBudget && totalBudget > 0 ? ['#EF4444', '#DC2626'] : ['#10B981', '#059669']}
                   style={[styles.darkHomeProgressFill, { width: `${budgetProgress}%` }]}
                 />
               </View>
               <Text style={styles.darkHomeBudgetHint}>
                 {totalBudget > 0
-                  ? expense > totalBudget
+                  ? currentMonthExpense > totalBudget
                     ? '⚠️ Budget limit exceeded!'
                     : `${Math.round(budgetProgress)}% of monthly budget used`
                   : 'Tap to set category budgets'}
@@ -310,15 +323,15 @@ export function HomeScreen({
             <View style={styles.budgetHeading}>
               <Text style={styles.budgetTitle}>Monthly Budget</Text>
               <Text style={styles.budgetAmount}>
-                {totalBudget > 0 ? `₹${expense.toLocaleString('en-IN')} / ₹${totalBudget.toLocaleString('en-IN')}` : 'Not set'}
+                {totalBudget > 0 ? `₹${currentMonthExpense.toLocaleString('en-IN')} / ₹${totalBudget.toLocaleString('en-IN')}` : 'Not set'}
               </Text>
             </View>
             <View style={styles.progressTrack}>
-              <View style={[styles.progressZero, { width: `${budgetProgress}%`, backgroundColor: expense > totalBudget && totalBudget > 0 ? '#EF4444' : green }]} />
+              <View style={[styles.progressZero, { width: `${budgetProgress}%`, backgroundColor: currentMonthExpense > totalBudget && totalBudget > 0 ? '#EF4444' : green }]} />
             </View>
             <Text style={styles.budgetHint}>
               {totalBudget > 0
-                ? expense > totalBudget
+                ? currentMonthExpense > totalBudget
                   ? '⚠️ Budget limit exceeded!'
                   : `${Math.round(budgetProgress)}% of monthly budget used`
                 : 'Tap to set category budgets'}

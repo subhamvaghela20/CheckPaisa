@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '../components/AppIcon';
 import { categories } from '../data/appData';
 import { green, styles } from '../styles/styles';
 
 export function EditBudgetScreen({ budgets = {}, darkMode = false, onBack, onSaveBudgets }) {
+  const insets = useSafeAreaInsets();
   const expenseCategories = categories.filter((c) => c.type === 'Expense');
   const scrollViewRef = useRef(null);
 
@@ -65,11 +67,11 @@ export function EditBudgetScreen({ budgets = {}, darkMode = false, onBack, onSav
           <Text style={styles.editBudgetSubtitle}>Enter budget limits for each expense category</Text>
         </View>
 
-        <View style={[styles.formPanel, darkMode && { backgroundColor: '#091510' }]}>
+        <View style={[styles.formPanel, { flex: 1 }, darkMode && { backgroundColor: '#091510' }]}>
           <ScrollView
             ref={scrollViewRef}
             style={styles.formPanelContent}
-            contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 320 }]}
+            contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 20 }]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
@@ -93,11 +95,23 @@ export function EditBudgetScreen({ budgets = {}, darkMode = false, onBack, onSav
                 </View>
               </View>
             ))}
+          </ScrollView>
 
-            <Pressable style={({ pressed }) => [styles.saveButton, darkMode && { backgroundColor: '#10B981' }, pressed && styles.pressedButton, { marginTop: 24 }]} onPress={handleSave}>
+          {/* Floating Action Button Footer */}
+          <View
+            style={{
+              paddingHorizontal: 20,
+              paddingTop: 10,
+              paddingBottom: Math.max(insets.bottom, 12),
+              backgroundColor: darkMode ? '#091510' : '#FFFFFF',
+              borderTopWidth: 1,
+              borderTopColor: darkMode ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
+            }}
+          >
+            <Pressable style={({ pressed }) => [styles.saveButton, { marginTop: 0 }, darkMode && { backgroundColor: '#10B981' }, pressed && styles.pressedButton]} onPress={handleSave}>
               <Text style={[styles.saveButtonText, darkMode && { color: '#000000' }]}>Save Category Budgets</Text>
             </Pressable>
-          </ScrollView>
+          </View>
         </View>
       </View>
     </KeyboardAvoidingView>
