@@ -1,11 +1,11 @@
 import React from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../components/AppIcon';
-import { categories } from '../data/appData';
+import { categories as defaultCategories } from '../data/appData';
 import { formatDate, formatTime } from '../utils/date';
 import { styles } from '../styles/styles';
 
-export function TransactionDetailsScreen({ transaction, darkMode = false, onBack, onEdit, onDelete }) {
+export function TransactionDetailsScreen({ transaction, categories = defaultCategories, darkMode = false, onBack, onEdit, onDelete }) {
   const date = new Date(transaction.createdAt);
 
   const confirmDelete = () => {

@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '../components/AppIcon';
-import { categories } from '../data/appData';
+import { categories as defaultCategories } from '../data/appData';
 import { green, styles } from '../styles/styles';
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export function AdvancedReportsScreen({ transactions = [], darkMode = false, onBack, onOpenTransaction }) {
+export function AdvancedReportsScreen({ transactions = [], customCategories = defaultCategories, activeWalletId, darkMode = false, onBack, onOpenTransaction }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showMonthPicker, setShowMonthPicker] = useState(false);
 
@@ -20,9 +20,10 @@ export function AdvancedReportsScreen({ transactions = [], darkMode = false, onB
     setCurrentDate(new Date(selectedYear, selectedMonth + offset, 1));
   };
 
+  const categories = customCategories.length > 0 ? customCategories : defaultCategories;
   const currentMonthTransactions = transactions.filter((t) => {
     const d = new Date(t.createdAt);
-    return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
+    return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth && (!activeWalletId || !t.walletId || t.walletId === activeWalletId);
   });
 
   const currentMonthExpenses = currentMonthTransactions.filter((t) => t.type === 'Expense');
@@ -37,7 +38,7 @@ export function AdvancedReportsScreen({ transactions = [], darkMode = false, onB
 
   const prevMonthTransactions = transactions.filter((t) => {
     const d = new Date(t.createdAt);
-    return d.getFullYear() === prevYear && d.getMonth() === prevMonth;
+    return d.getFullYear() === prevYear && d.getMonth() === prevMonth && (!activeWalletId || !t.walletId || t.walletId === activeWalletId);
   });
 
   const prevExpenseTotal = prevMonthTransactions.filter((t) => t.type === 'Expense').reduce((s, t) => s + t.amount, 0);

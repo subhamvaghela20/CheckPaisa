@@ -25,6 +25,7 @@ export function HomeScreen({
   const [activeTab, setActiveTab] = useState('Home');
   const [showWalletDropdown, setShowWalletDropdown] = useState(false);
   const insets = useSafeAreaInsets();
+  const displayCategories = customCategories.length > 0 ? customCategories : categories;
 
   const activeWallet = wallets.find((w) => w.id === activeWalletId) || wallets[0] || {
     id: 'default_wallet',
@@ -43,7 +44,11 @@ export function HomeScreen({
     }).start();
   }, [activeWalletId]);
 
-  const walletTransactions = transactions.filter((item) => !item.walletId || item.walletId === activeWallet.id);
+  const now = new Date();
+  const walletTransactions = transactions.filter((item) => {
+    const transactionDate = new Date(item.createdAt);
+    return (!item.walletId || item.walletId === activeWallet.id) && !Number.isNaN(transactionDate.getTime()) && transactionDate <= now;
+  });
 
   const income = walletTransactions.filter((item) => item.type === 'Income').reduce((total, item) => total + item.amount, 0);
   const expense = walletTransactions.filter((item) => item.type === 'Expense').reduce((total, item) => total + item.amount, 0);
@@ -53,7 +58,6 @@ export function HomeScreen({
   const initial = userName.charAt(0).toUpperCase();
 
   // Current calendar month expense calculation for Monthly Budget
-  const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
@@ -178,7 +182,7 @@ export function HomeScreen({
                 </View>
 
                 {group.data.map((transaction) => {
-                  const catObj = categories.find((item) => item.name === transaction.category);
+                  const catObj = displayCategories.find((item) => item.name === transaction.category);
                   const iconColor = transaction.type === 'Income' ? '#10B981' : '#EF4444';
                   const txTime = formatTime(new Date(transaction.createdAt));
 
@@ -226,7 +230,7 @@ export function HomeScreen({
         </Pressable>
 
         {/* Floating Voice Mic Button */}
-        <VoiceMicButton darkMode={true} categories={[...categories, ...customCategories]} onTransactionParsed={onVoiceAdd} />
+        <VoiceMicButton darkMode={true} categories={displayCategories} onTransactionParsed={onVoiceAdd} />
 
         {/* Centered Wallet Dropdown Modal */}
         <Modal visible={showWalletDropdown} transparent animationType="fade" onRequestClose={() => setShowWalletDropdown(false)}>
@@ -362,7 +366,7 @@ export function HomeScreen({
               </View>
 
               {group.data.map((transaction) => {
-                const catObj = categories.find((item) => item.name === transaction.category);
+                const catObj = displayCategories.find((item) => item.name === transaction.category);
                 const txTime = formatTime(new Date(transaction.createdAt));
 
                 return (
@@ -411,7 +415,7 @@ export function HomeScreen({
       </Pressable>
 
       {/* Floating Voice Mic Button */}
-      <VoiceMicButton darkMode={false} categories={[...categories, ...customCategories]} onTransactionParsed={onVoiceAdd} />
+      <VoiceMicButton darkMode={false} categories={displayCategories} onTransactionParsed={onVoiceAdd} />
 
       {/* Centered Wallet Dropdown Modal */}
       <Modal visible={showWalletDropdown} transparent animationType="fade" onRequestClose={() => setShowWalletDropdown(false)}>

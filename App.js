@@ -21,18 +21,23 @@ import {
   deleteUserData,
   loadBudgets,
   loadCategories,
+  loadCurrency,
   loadDarkMode,
+  loadNotifications,
   loadSetupCompleted,
   loadTransactions,
   loadUser,
   loadWallets,
   saveBudgets,
   saveCategories,
+  saveCurrency,
   saveDarkMode,
+  saveNotifications,
   saveSetupCompleted,
   saveTransactions,
   saveUser,
   saveWallets,
+  updateUserProfile,
 } from './src/utils/storage';
 import { styles } from './src/styles/styles';
 
@@ -142,14 +147,17 @@ export default function App() {
       });
 
       loadWallets(activeUser.email).then((storedWallets) => {
-        if (Array.isArray(storedWallets) && storedWallets.length > 0) setWallets(storedWallets);
+        if (Array.isArray(storedWallets) && storedWallets.length > 0) {
+          setWallets(storedWallets);
+          setActiveWalletId(storedWallets[0].id);
+        }
       });
-    });
-
-    loadCategories().then((storedCats) => {
-      if (Array.isArray(storedCats) && storedCats.length > 0) {
-        setCustomCategories(storedCats);
-      }
+      loadCategories(activeUser.email).then((storedCats) => {
+        if (Array.isArray(storedCats) && storedCats.length > 0) setCustomCategories(storedCats);
+        else setCustomCategories(defaultCategories);
+      });
+      loadCurrency(activeUser.email).then(setCurrency);
+      loadNotifications(activeUser.email).then(setNotifications);
     });
 
     loadDarkMode().then((isDark) => setDarkMode(isDark));
@@ -170,6 +178,11 @@ export default function App() {
       setWallets(w);
       setActiveWalletId(w[0].id);
     }
+
+    const cats = await loadCategories(userData.email);
+    setCustomCategories(Array.isArray(cats) && cats.length > 0 ? cats : defaultCategories);
+    setCurrency(await loadCurrency(userData.email));
+    setNotifications(await loadNotifications(userData.email));
 
     const isSetupDone = await loadSetupCompleted(userData.email);
 
@@ -202,20 +215,28 @@ export default function App() {
     loadTransactions(guestUser.email).then(setTransactions);
     loadBudgets(guestUser.email).then(setBudgets);
     loadWallets(guestUser.email).then((w) => {
-      if (Array.isArray(w) && w.length > 0) setWallets(w);
+      if (Array.isArray(w) && w.length > 0) {
+        setWallets(w);
+        setActiveWalletId(w[0].id);
+      }
     });
-    saveUser(guestUser);
+    loadCategories(guestUser.email).then((cats) => setCustomCategories(Array.isArray(cats) && cats.length > 0 ? cats : defaultCategories));
+    loadCurrency(guestUser.email).then(setCurrency);
+    loadNotifications(guestUser.email).then(setNotifications);
     setHistory([SCREENS.HOME]);
   };
 
   const handleUpdateProfile = async (updatedUser) => {
+    const result = await updateUserProfile(user.email, updatedUser);
+    if (!result.success) return result;
     setUser(updatedUser);
     await saveUser(updatedUser);
+    return result;
   };
 
   const handleUpdateCategories = async (updatedCategories) => {
     setCustomCategories(updatedCategories);
-    await saveCategories(updatedCategories);
+    await saveCategories(updatedCategories, user.email);
   };
 
   const handleLogout = async () => {
@@ -224,6 +245,11 @@ export default function App() {
     setUser(defaultUser);
     setTransactions([]);
     setBudgets(null);
+    setWallets(DEFAULT_WALLETS);
+    setActiveWalletId('default_wallet');
+    setCustomCategories(defaultCategories);
+    setCurrency('INR (₹)');
+    setNotifications(true);
     setHistory([SCREENS.LOGIN]);
   };
 
@@ -235,6 +261,11 @@ export default function App() {
     setUser(defaultUser);
     setTransactions([]);
     setBudgets(null);
+    setWallets(DEFAULT_WALLETS);
+    setActiveWalletId('default_wallet');
+    setCustomCategories(defaultCategories);
+    setCurrency('INR (₹)');
+    setNotifications(true);
     setHistory([SCREENS.LOGIN]);
   };
 
@@ -362,17 +393,26 @@ export default function App() {
 
   const handleImportTransactions = (importedList) => {
     setTransactions((current) => {
-      const updated = [...importedList, ...current];
+      const existingIds = new Set(current.map((item) => item.id));
+      const uniqueImported = importedList.filter((item) => !existingIds.has(item.id));
+      const updated = [...uniqueImported, ...current];
       saveTransactions(updated, user.email);
       return updated;
     });
   };
 
-  const handleResetAllData = () => {
+  const handleResetAllData = async () => {
     setTransactions([]);
     setBudgets(null);
-    saveTransactions([], user.email);
-    saveBudgets(null, user.email);
+    setWallets(DEFAULT_WALLETS);
+    setActiveWalletId('default_wallet');
+    setCustomCategories(defaultCategories);
+    await Promise.all([
+      saveTransactions([], user.email),
+      saveBudgets(null, user.email),
+      saveWallets(DEFAULT_WALLETS, user.email),
+      saveCategories(defaultCategories, user.email),
+    ]);
     setHistory([SCREENS.HOME]);
   };
 
@@ -425,6 +465,8 @@ export default function App() {
           <ReportsScreen
             transactions={transactions}
             darkMode={darkMode}
+            customCategories={customCategories}
+            activeWalletId={activeWalletId}
             onAdd={() => pushScreen(SCREENS.ADD)}
             onOpenTransaction={openTransaction}
             onOpenAdvanced={() => pushScreen(SCREENS.ADVANCED_REPORTS)}
@@ -436,6 +478,8 @@ export default function App() {
           <AdvancedReportsScreen
             transactions={transactions}
             darkMode={darkMode}
+            customCategories={customCategories}
+            activeWalletId={activeWalletId}
             onBack={popScreen}
             onOpenTransaction={openTransaction}
           />
@@ -446,6 +490,8 @@ export default function App() {
             transactions={transactions}
             budgets={budgets}
             darkMode={darkMode}
+            customCategories={customCategories}
+            activeWalletId={activeWalletId}
             onOpenEditBudget={() => pushScreen(SCREENS.EDIT_BUDGET)}
             onAdd={() => pushScreen(SCREENS.ADD)}
             onOpenTransaction={openTransaction}
@@ -453,7 +499,7 @@ export default function App() {
           />
         );
       case SCREENS.EDIT_BUDGET:
-        return <EditBudgetScreen budgets={budgets} darkMode={darkMode} onBack={popScreen} onSaveBudgets={handleSaveBudgets} />;
+        return <EditBudgetScreen budgets={budgets} categories={customCategories} darkMode={darkMode} onBack={popScreen} onSaveBudgets={handleSaveBudgets} />;
       case SCREENS.PROFILE:
         return (
           <ProfileScreen
@@ -461,11 +507,18 @@ export default function App() {
             transactions={transactions}
             budgets={budgets}
             currency={currency}
-            onSelectCurrency={setCurrency}
+            onSelectCurrency={(nextCurrency) => {
+              setCurrency(nextCurrency);
+              saveCurrency(nextCurrency, user.email);
+            }}
             darkMode={darkMode}
             onToggleDarkMode={handleToggleDarkMode}
             notifications={notifications}
-            onToggleNotifications={() => setNotifications((prev) => !prev)}
+            onToggleNotifications={() => setNotifications((prev) => {
+              const next = !prev;
+              saveNotifications(next, user.email);
+              return next;
+            })}
             wallets={wallets}
             activeWalletId={activeWalletId}
             onSelectWallet={handleSelectWallet}
@@ -508,6 +561,7 @@ export default function App() {
           return (
             <TransactionDetailsScreen
               transaction={selectedTransaction}
+              categories={customCategories}
               darkMode={darkMode}
               onBack={popScreen}
               onEdit={() => pushScreen(SCREENS.EDIT)}
@@ -522,6 +576,8 @@ export default function App() {
             <TransactionFormScreen
               transaction={selectedTransaction}
               categories={customCategories}
+            wallets={wallets}
+              activeWalletId={activeWalletId}
               darkMode={darkMode}
               onClose={popScreen}
               onSave={handleEditTransaction}
@@ -537,7 +593,7 @@ export default function App() {
             user={user}
             darkMode={darkMode}
             customCategories={customCategories}
-            wallets={wallets}
+              wallets={wallets}
             activeWalletId={activeWalletId}
             onSelectWallet={handleSelectWallet}
             onAdd={() => pushScreen(SCREENS.ADD)}

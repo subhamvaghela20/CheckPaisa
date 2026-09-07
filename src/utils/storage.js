@@ -2,7 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const USER_KEY = '@checkpaisa_active_user';
 const DARK_MODE_KEY = '@checkpaisa_darkmode';
-const CATEGORIES_KEY = '@checkpaisa_categories';
+const LEGACY_CATEGORIES_KEY = '@checkpaisa_categories';
+const CURRENCY_KEY = '@checkpaisa_currency';
+const NOTIFICATIONS_KEY = '@checkpaisa_notifications';
 const REGISTERED_USERS_KEY = '@checkpaisa_registered_users';
 
 const DEFAULT_REGISTERED_USERS = [
@@ -60,6 +62,16 @@ function getBudgetKey(email) {
   return `@checkpaisa_budgets_${sanitized}`;
 }
 
+function getCategoriesKey(email) {
+  const sanitized = email ? email.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'default';
+  return `@checkpaisa_categories_${sanitized}`;
+}
+
+function getPreferenceKey(baseKey, email) {
+  const sanitized = email ? email.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'default';
+  return `${baseKey}_${sanitized}`;
+}
+
 export async function loadTransactions(email) {
   try {
     const key = getTxKey(email);
@@ -102,22 +114,59 @@ export async function saveBudgets(budgets, email) {
   }
 }
 
-export async function loadCategories() {
+export async function loadCategories(email) {
   try {
-    const jsonValue = await AsyncStorage.getItem(CATEGORIES_KEY);
-    return jsonValue != null ? JSON.parse(jsonValue) : null;
+    const jsonValue = await AsyncStorage.getItem(getCategoriesKey(email));
+    if (jsonValue != null) return JSON.parse(jsonValue);
+
+    // Preserve categories saved by earlier app versions, then isolate future edits per user.
+    const legacyValue = await AsyncStorage.getItem(LEGACY_CATEGORIES_KEY);
+    return legacyValue != null ? JSON.parse(legacyValue) : null;
   } catch (e) {
     console.error('Failed to load categories:', e);
     return null;
   }
 }
 
-export async function saveCategories(categoriesList) {
+export async function saveCategories(categoriesList, email) {
   try {
     const jsonValue = JSON.stringify(categoriesList);
-    await AsyncStorage.setItem(CATEGORIES_KEY, jsonValue);
+    await AsyncStorage.setItem(getCategoriesKey(email), jsonValue);
   } catch (e) {
     console.error('Failed to save categories:', e);
+  }
+}
+
+export async function loadCurrency(email) {
+  try {
+    return (await AsyncStorage.getItem(getPreferenceKey(CURRENCY_KEY, email))) || 'INR (₹)';
+  } catch (e) {
+    return 'INR (₹)';
+  }
+}
+
+export async function saveCurrency(currency, email) {
+  try {
+    await AsyncStorage.setItem(getPreferenceKey(CURRENCY_KEY, email), currency);
+  } catch (e) {
+    console.error('Failed to save currency preference:', e);
+  }
+}
+
+export async function loadNotifications(email) {
+  try {
+    const value = await AsyncStorage.getItem(getPreferenceKey(NOTIFICATIONS_KEY, email));
+    return value == null ? true : value === 'true';
+  } catch (e) {
+    return true;
+  }
+}
+
+export async function saveNotifications(enabled, email) {
+  try {
+    await AsyncStorage.setItem(getPreferenceKey(NOTIFICATIONS_KEY, email), String(Boolean(enabled)));
+  } catch (e) {
+    console.error('Failed to save notification preference:', e);
   }
 }
 
@@ -151,9 +200,15 @@ export async function deleteUserData(email) {
     const txKey = getTxKey(email);
     const budgetKey = getBudgetKey(email);
     const walletKey = getWalletKey(email);
-    await AsyncStorage.removeItem(txKey);
-    await AsyncStorage.removeItem(budgetKey);
-    await AsyncStorage.removeItem(walletKey);
+    await AsyncStorage.multiRemove([
+      txKey,
+      budgetKey,
+      walletKey,
+      getCategoriesKey(email),
+      getSetupKey(email),
+      getPreferenceKey(CURRENCY_KEY, email),
+      getPreferenceKey(NOTIFICATIONS_KEY, email),
+    ]);
 
     // Remove from registered users list if present
     const users = await loadRegisteredUsers();
@@ -161,6 +216,42 @@ export async function deleteUserData(email) {
     await saveRegisteredUsers(updatedUsers);
   } catch (e) {
     console.error('Failed to delete user data:', e);
+  }
+}
+
+export async function updateUserProfile(oldEmail, updatedUser) {
+  const nextEmail = updatedUser.email.toLowerCase();
+  const previousEmail = oldEmail.toLowerCase();
+  try {
+    const users = await loadRegisteredUsers();
+    const conflictingUser = users.find((item) => item.email.toLowerCase() === nextEmail && item.email.toLowerCase() !== previousEmail);
+    if (conflictingUser) return { success: false, error: 'An account already uses this email address.' };
+
+    if (previousEmail !== nextEmail) {
+      const keyPairs = [
+        [getTxKey(oldEmail), getTxKey(updatedUser.email)],
+        [getBudgetKey(oldEmail), getBudgetKey(updatedUser.email)],
+        [getWalletKey(oldEmail), getWalletKey(updatedUser.email)],
+        [getCategoriesKey(oldEmail), getCategoriesKey(updatedUser.email)],
+        [getSetupKey(oldEmail), getSetupKey(updatedUser.email)],
+        [getPreferenceKey(CURRENCY_KEY, oldEmail), getPreferenceKey(CURRENCY_KEY, updatedUser.email)],
+        [getPreferenceKey(NOTIFICATIONS_KEY, oldEmail), getPreferenceKey(NOTIFICATIONS_KEY, updatedUser.email)],
+      ];
+      for (const [oldKey, newKey] of keyPairs) {
+        const value = await AsyncStorage.getItem(oldKey);
+        if (value != null) await AsyncStorage.setItem(newKey, value);
+      }
+      await AsyncStorage.multiRemove(keyPairs.map(([oldKey]) => oldKey));
+    }
+
+    const updatedUsers = users.map((item) => item.email.toLowerCase() === previousEmail
+      ? { ...item, name: updatedUser.name, email: updatedUser.email }
+      : item);
+    await saveRegisteredUsers(updatedUsers);
+    return { success: true };
+  } catch (e) {
+    console.error('Failed to update profile:', e);
+    return { success: false, error: 'Could not save profile changes. Please try again.' };
   }
 }
 

@@ -3,12 +3,12 @@ import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '../components/AppIcon';
-import { categories } from '../data/appData';
+import { categories as defaultCategories } from '../data/appData';
 import { green, styles } from '../styles/styles';
 
-export function EditBudgetScreen({ budgets = {}, darkMode = false, onBack, onSaveBudgets }) {
+export function EditBudgetScreen({ budgets = {}, categories = defaultCategories, darkMode = false, onBack, onSaveBudgets }) {
   const insets = useSafeAreaInsets();
-  const expenseCategories = categories.filter((c) => c.type === 'Expense');
+  const expenseCategories = (categories.length > 0 ? categories : defaultCategories).filter((c) => c.type === 'Expense');
   const scrollViewRef = useRef(null);
 
   useEffect(() => {

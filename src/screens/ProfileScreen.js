@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { AppIcon } from '../components/AppIcon';
 import { CustomAlertModal } from '../components/CustomAlertModal';
 import { green, styles } from '../styles/styles';
@@ -100,7 +102,7 @@ export function ProfileScreen({
     setShowEditProfileModal(true);
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     const trimmedName = editName.trim();
     const trimmedEmail = editEmail.trim();
     if (!trimmedName) {
@@ -110,17 +112,53 @@ export function ProfileScreen({
       return showAlert({ title: 'Invalid Email', message: 'Please enter a valid email address.', icon: '⚠️' });
     }
 
-    onUpdateProfile({ name: trimmedName, email: trimmedEmail, isGuest });
+    const result = await onUpdateProfile({ name: trimmedName, email: trimmedEmail, isGuest });
+    if (!result?.success) {
+      return showAlert({ title: 'Profile Not Updated', message: result?.error || 'Could not save profile changes. Please try again.' });
+    }
     setShowEditProfileModal(false);
   };
 
+  const escapeCsvValue = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+
+  const parseCsvLine = (line) => {
+    const values = [];
+    let value = '';
+    let quoted = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      if (char === '"') {
+        if (quoted && line[i + 1] === '"') { value += '"'; i += 1; } else quoted = !quoted;
+      } else if (char === ',' && !quoted) {
+        values.push(value.trim());
+        value = '';
+      } else value += char;
+    }
+    values.push(value.trim());
+    return values;
+  };
+
   // CSV Export Generator
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     if (transactions.length === 0) {
       return showAlert({ title: 'No Data to Export', message: 'There are no transaction records available to export.', icon: '📄' });
     }
 
-    let csvContent = 'ID,Type,Category,Amount,Date,Notes\n';
+    let csvContent = `ID,Type,Category,Amount,Date,Notes,Wallet ID\n${transactions.map((t) => [
+      t.id, t.type, t.category, t.amount, t.createdAt, t.note || '', t.walletId || '',
+    ].map(escapeCsvValue).join(',')).join('\n')}\n`;
+    try {
+      const fileUri = `${FileSystem.cacheDirectory}checkpaisa-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+      await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, { mimeType: 'text/csv', dialogTitle: 'Export CheckPaisa transactions' });
+      }
+      return showAlert({ title: 'Export Ready', message: `${transactions.length} transaction record(s) were exported as a CSV file.` });
+    } catch (e) {
+      return showAlert({ title: 'Export Error', message: 'Could not create the CSV file. Please try again.' });
+    }
+
+    /* Legacy preview retained below only for source compatibility. */
     transactions.forEach((t) => {
       const cleanNote = (t.note || '').replace(/"/g, '""');
       csvContent += `"${t.id}","${t.type}","${t.category}",${t.amount},"${t.createdAt}","${cleanNote}"\n`;
@@ -145,9 +183,9 @@ export function ProfileScreen({
 
       lines.forEach((line, index) => {
         if (index === 0 && line.toLowerCase().includes('type')) return;
-        const parts = line.split(',').map((p) => p.replace(/^"|"$/g, '').trim());
+        const parts = parseCsvLine(line);
         if (parts.length >= 5) {
-          const [id, type, category, amountStr, createdAt, note] = parts;
+          const [id, type, category, amountStr, createdAt, note, walletId] = parts;
           const numAmount = Number(amountStr);
           if (numAmount > 0 && (type === 'Expense' || type === 'Income')) {
             importedList.push({
@@ -155,8 +193,9 @@ export function ProfileScreen({
               type,
               category: category || 'Other',
               amount: numAmount,
-              createdAt: createdAt || new Date().toISOString(),
+              createdAt: createdAt && !Number.isNaN(new Date(createdAt).getTime()) ? createdAt : new Date().toISOString(),
               note: note || '',
+              walletId: walletId || activeWalletId || 'default_wallet',
             });
           }
         }

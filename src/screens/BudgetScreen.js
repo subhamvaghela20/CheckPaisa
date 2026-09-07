@@ -3,12 +3,12 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '../components/AppIcon';
-import { categories } from '../data/appData';
+import { categories as defaultCategories } from '../data/appData';
 import { green, styles } from '../styles/styles';
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-export function BudgetScreen({ transactions = [], budgets = null, darkMode = false, onOpenEditBudget, onAdd, onOpenTransaction, onNavigate }) {
+export function BudgetScreen({ transactions = [], budgets = null, customCategories = defaultCategories, activeWalletId, darkMode = false, onOpenEditBudget, onAdd, onOpenTransaction, onNavigate }) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('Budget');
   const [currentDate] = useState(new Date());
@@ -18,10 +18,10 @@ export function BudgetScreen({ transactions = [], budgets = null, darkMode = fal
 
   const currentMonthExpenses = transactions.filter((t) => {
     const d = new Date(t.createdAt);
-    return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth && t.type === 'Expense';
+    return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth && t.type === 'Expense' && (!activeWalletId || !t.walletId || t.walletId === activeWalletId);
   });
 
-  const expenseCategories = categories.filter((c) => c.type === 'Expense');
+  const expenseCategories = (customCategories.length > 0 ? customCategories : defaultCategories).filter((c) => c.type === 'Expense');
   const hasBudgetSet = Boolean(budgets && Object.keys(budgets).length > 0);
 
   const categoryBudgets = expenseCategories

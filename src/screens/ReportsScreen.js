@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { AppIcon } from '../components/AppIcon';
-import { categories } from '../data/appData';
+import { categories as defaultCategories } from '../data/appData';
 import { formatTransactionDateTime } from '../utils/date';
 import { green, styles } from '../styles/styles';
 
@@ -25,7 +25,7 @@ function describeArc(x, y, radius, startAngle, endAngle) {
   return ['M', start.x, start.y, 'A', radius, radius, 0, largeArcFlag, 0, end.x, end.y].join(' ');
 }
 
-export function ReportsScreen({ transactions = [], darkMode = false, onAdd, onOpenTransaction, onOpenAdvanced, onNavigate }) {
+export function ReportsScreen({ transactions = [], customCategories = defaultCategories, activeWalletId, darkMode = false, onAdd, onOpenTransaction, onOpenAdvanced, onNavigate }) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('Reports');
   const [reportTab, setReportTab] = useState('breakdown');
@@ -38,9 +38,10 @@ export function ReportsScreen({ transactions = [], darkMode = false, onAdd, onOp
     setCurrentDate(new Date(selectedYear, selectedMonth + offset, 1));
   };
 
+  const categories = customCategories.length > 0 ? customCategories : defaultCategories;
   const monthlyTransactions = transactions.filter((t) => {
     const d = new Date(t.createdAt);
-    return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth && t.type === 'Expense';
+    return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth && t.type === 'Expense' && (!activeWalletId || !t.walletId || t.walletId === activeWalletId);
   });
 
   const monthlyExpenses = monthlyTransactions;
