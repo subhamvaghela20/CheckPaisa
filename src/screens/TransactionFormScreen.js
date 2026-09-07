@@ -70,8 +70,8 @@ export function TransactionFormScreen({
     const typeLabel = type === 'Income' ? 'Income' : 'Expense';
 
     Alert.alert(
-      'Success',
-      `${typeLabel} entry added successfully!`,
+      editing ? 'Transaction updated' : 'Transaction added',
+      editing ? 'Your changes have been saved.' : `${typeLabel} entry added successfully!`,
       [
         {
           text: 'OK',
@@ -93,11 +93,11 @@ export function TransactionFormScreen({
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={[styles.formScreen, darkMode && { backgroundColor: '#040C08' }]}>
         <View style={[styles.formHero, darkMode && { backgroundColor: '#0B2E21' }]}>
           <View style={styles.formHeader}>
-            <Pressable style={styles.formClose} onPress={onClose}>
+            <Pressable style={styles.formClose} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close transaction form" hitSlop={6}>
               <AppIcon name="back" size={20} color="#FFFFFF" />
             </Pressable>
             <Text style={styles.formTitle}>{editing ? 'Edit Transaction' : 'Add Transaction'}</Text>
@@ -115,6 +115,7 @@ export function TransactionFormScreen({
               style={styles.amountInput}
               autoFocus
               selectionColor="#FFFFFF"
+              accessibilityLabel="Transaction amount"
             />
           </View>
         </View>
@@ -122,7 +123,7 @@ export function TransactionFormScreen({
           <ScrollView
             ref={scrollViewRef}
             style={styles.formPanelContent}
-            contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 20 }]}
+            contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 110 }]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
@@ -135,11 +136,11 @@ export function TransactionFormScreen({
               </Pressable>
             </View>
             <View style={styles.dateTimeRow}>
-              <Pressable style={[styles.dateTimeButton, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)' }]} onPress={() => setPickerMode('date')}>
+              <Pressable style={[styles.dateTimeButton, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)' }]} onPress={() => setPickerMode('date')} accessibilityRole="button" accessibilityLabel="Select transaction date">
                 <Text style={[styles.dateTimeLabel, darkMode && { color: '#94A3B8' }]}>Date</Text>
                 <Text style={[styles.dateTimeValue, darkMode && { color: '#FFF' }]}>{formatDate(transactionDate)}</Text>
               </Pressable>
-              <Pressable style={[styles.dateTimeButton, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)' }]} onPress={() => setPickerMode('time')}>
+              <Pressable style={[styles.dateTimeButton, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)' }]} onPress={() => setPickerMode('time')} accessibilityRole="button" accessibilityLabel="Select transaction time">
                 <Text style={[styles.dateTimeLabel, darkMode && { color: '#94A3B8' }]}>Time</Text>
                 <Text style={[styles.dateTimeValue, darkMode && { color: '#FFF' }]}>{formatTime(transactionDate)}</Text>
               </Pressable>
@@ -157,6 +158,9 @@ export function TransactionFormScreen({
                       <Pressable
                         key={w.id}
                         onPress={() => setWalletId(w.id)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSel }}
+                        accessibilityLabel={`Select wallet ${w.name}`}
                         style={[
                           styles.walletPill,
                           { backgroundColor: darkMode ? 'rgba(4,12,8,0.8)' : '#F1F5F9', borderColor: '#CBD5E1' },
@@ -180,7 +184,7 @@ export function TransactionFormScreen({
                 const catColor = item.color || '#64748B';
 
                 return (
-                  <Pressable key={item.name} style={styles.categoryChoice} onPress={() => setCategory(item.name)}>
+                  <Pressable key={item.name} style={styles.categoryChoice} onPress={() => setCategory(item.name)} accessibilityRole="radio" accessibilityState={{ selected: isSelected }} accessibilityLabel={`${item.name} category`}>
                     <View
                       style={[
                         styles.categoryCircle,
@@ -204,6 +208,8 @@ export function TransactionFormScreen({
               placeholderTextColor="#94A3B8"
               style={[styles.noteInput, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', color: '#FFF' }]}
               multiline
+              onFocus={() => setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 120)}
+              accessibilityLabel="Transaction note"
             />
           </ScrollView>
 
@@ -218,7 +224,7 @@ export function TransactionFormScreen({
               borderTopColor: darkMode ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
             }}
           >
-            <Pressable style={({ pressed }) => [styles.saveButton, { marginTop: 0 }, darkMode && { backgroundColor: '#10B981' }, pressed && styles.pressedButton]} onPress={save}>
+            <Pressable style={({ pressed }) => [styles.saveButton, { marginTop: 0 }, darkMode && { backgroundColor: '#10B981' }, pressed && styles.pressedButton]} onPress={save} accessibilityRole="button" accessibilityLabel={editing ? 'Save transaction changes' : 'Add transaction'}>
               <Text style={[styles.saveButtonText, darkMode && { color: '#000' }]}>{editing ? 'Save Changes' : 'Add Transaction'}</Text>
             </Pressable>
           </View>

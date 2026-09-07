@@ -487,8 +487,9 @@ export function ProfileScreen({
 
       {/* Import Data Modal */}
       <Modal visible={showImportModal} transparent animationType="slide" onRequestClose={() => setShowImportModal(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setShowImportModal(false)}>
-          <View style={[styles.addSheet, darkMode && { backgroundColor: '#091510', borderColor: 'rgba(16,185,129,0.3)', borderWidth: 1 }, { paddingBottom: 28 }]}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setShowImportModal(false)}>
+          <Pressable style={[styles.addSheet, darkMode && { backgroundColor: '#091510', borderColor: 'rgba(16,185,129,0.3)', borderWidth: 1 }, { paddingBottom: 28 }]} onPress={(event) => event.stopPropagation()}>
             <View style={styles.sheetHandle} />
             <Text style={[styles.sheetTitle, darkMode && { color: '#FFF' }]}>Import Expenses (CSV)</Text>
             <Text style={[styles.sheetText, darkMode && { color: '#94A3B8' }]}>Paste CSV lines in format: ID,Type,Category,Amount,Date,Notes</Text>
@@ -499,6 +500,7 @@ export function ProfileScreen({
               placeholderTextColor="#94A3B8"
               style={[styles.importTextInput, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', color: '#FFF' }]}
               multiline
+              accessibilityLabel="CSV data to import"
             />
             <View style={{ flexDirection: 'row', gap: 12, width: '100%', marginTop: 16 }}>
               <Pressable style={[styles.sheetClose, { flex: 1, backgroundColor: '#E2E8F0', marginTop: 0 }]} onPress={() => setShowImportModal(false)}>
@@ -508,8 +510,9 @@ export function ProfileScreen({
                 <Text style={styles.sheetCloseText}>Import Data</Text>
               </Pressable>
             </View>
-          </View>
-        </Pressable>
+          </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Bottom Navigation */}
@@ -668,7 +671,7 @@ export function ProfileScreen({
               <Pressable
                 style={[styles.addCatSaveBtn, { flex: 1 }]}
                 onPress={() => {
-                  if (!newWalletName.trim()) return showAlert('Name Required', 'Please enter a name for your wallet.');
+                  if (!newWalletName.trim()) return showAlert({ title: 'Name Required', message: 'Please enter a name for your wallet.' });
                   onAddWallet?.({ name: newWalletName, initialBalance: newWalletBalance });
                   setNewWalletName('');
                   setNewWalletBalance('');
@@ -715,7 +718,7 @@ export function ProfileScreen({
               <Pressable
                 style={[styles.addCatSaveBtn, { flex: 1 }]}
                 onPress={() => {
-                  if (!renameText.trim()) return showAlert('Name Required', 'Please enter a name.');
+                  if (!renameText.trim()) return showAlert({ title: 'Name Required', message: 'Please enter a name.' });
                   onRenameWallet?.(editingWallet.id, { name: renameText.trim(), initialBalance: renameBalance });
                   setEditingWallet(null);
                   setRenameText('');

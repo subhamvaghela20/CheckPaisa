@@ -56,6 +56,8 @@ export function HomeScreen({
 
   const userName = user?.name || 'Siddharajsinh';
   const initial = userName.charAt(0).toUpperCase();
+  const hour = now.getHours();
+  const greetingMessage = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
   // Current calendar month expense calculation for Monthly Budget
   const currentMonth = now.getMonth();
@@ -88,21 +90,13 @@ export function HomeScreen({
         <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.darkHomeScrollContent, { paddingBottom: 110 + insets.bottom }]} showsVerticalScrollIndicator={false}>
           {/* Top Hero Header Block */}
           <View style={styles.darkHomeHero}>
-            <View style={styles.homeTopRow}>
+            <View style={[styles.homeTopRow, styles.darkUserGreetingHighlight]}>
               <LinearGradient colors={['#10B981', '#059669']} style={styles.darkHomeAvatar}>
                 <Text style={styles.darkHomeAvatarText}>{initial}</Text>
               </LinearGradient>
               <View style={styles.greeting}>
-                <Text style={styles.darkHomeGreetingSmall}>Good Morning</Text>
+                <Text style={styles.darkHomeGreetingSmall}>{greetingMessage}</Text>
                 <Text style={styles.darkHomeGreetingName}>{userName}</Text>
-              </View>
-              <View style={styles.headerButtons}>
-                <Pressable style={styles.darkHomeHeaderButton}>
-                  <AppIcon name="search" color="#10B981" size={19} />
-                </Pressable>
-                <Pressable style={styles.darkHomeHeaderButton}>
-                  <AppIcon name="bell" color="#10B981" size={19} />
-                </Pressable>
               </View>
             </View>
 
@@ -122,7 +116,7 @@ export function HomeScreen({
 
               {/* Income / Expense Summary Cards */}
               <View style={styles.summaryRow}>
-                <View style={styles.darkHomeSummaryCard}>
+                <View style={styles.darkIncomeSummaryCardLightGreen}>
                   <Text style={styles.darkHomeIncomeLabel}>↘  Income</Text>
                   <Text style={styles.darkHomeIncomeValue}>₹{income.toLocaleString('en-IN')}</Text>
                 </View>
@@ -217,7 +211,7 @@ export function HomeScreen({
             ['Budget', 'budget'],
             ['Profile', 'user'],
           ].map(([label, icon]) => (
-            <Pressable key={label} style={styles.navItem} onPress={() => navigate(label)}>
+            <Pressable key={label} style={styles.navItem} onPress={() => navigate(label)} accessibilityRole="tab" accessibilityState={{ selected: activeTab === label }} accessibilityLabel={`${label} tab`}>
               <AppIcon name={icon} color={activeTab === label ? '#10B981' : '#64748B'} size={23} />
               <Text style={[styles.navLabel, activeTab === label && { color: '#10B981', fontWeight: '800' }]}>{label}</Text>
             </Pressable>
@@ -225,7 +219,7 @@ export function HomeScreen({
         </View>
 
         {/* Floating Add Button */}
-        <Pressable style={({ pressed }) => [styles.floatingButton, { bottom: 80 + insets.bottom }, pressed && styles.pressedButton]} onPress={onAdd}>
+        <Pressable style={({ pressed }) => [styles.floatingButton, { bottom: 80 + insets.bottom }, pressed && styles.pressedButton]} onPress={onAdd} accessibilityRole="button" accessibilityLabel="Add transaction">
           <AppIcon name="plus" size={31} />
         </Pressable>
 
@@ -279,21 +273,13 @@ export function HomeScreen({
     <View style={styles.home}>
       <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.homeMainScrollContent, { paddingBottom: 110 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         <View style={styles.homeHero}>
-          <View style={styles.homeTopRow}>
+          <View style={[styles.homeTopRow, styles.homeUserGreetingHighlight]}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{initial}</Text>
             </View>
             <View style={styles.greeting}>
-              <Text style={styles.greetingSmall}>Good Morning</Text>
+              <Text style={styles.greetingSmall}>{greetingMessage}</Text>
               <Text style={styles.greetingName}>{userName}</Text>
-            </View>
-            <View style={styles.headerButtons}>
-              <Pressable style={styles.headerButton}>
-                <AppIcon name="search" />
-              </Pressable>
-              <Pressable style={styles.headerButton}>
-                <AppIcon name="bell" />
-              </Pressable>
             </View>
           </View>
           {/* Centered Wallet Dropdown Pill (Matching Screenshot Attachment) */}
@@ -310,9 +296,9 @@ export function HomeScreen({
             <Text style={styles.balanceLabel}>Total Balance ({activeWallet.name})</Text>
             <Text style={styles.balance}>₹{balance.toLocaleString('en-IN')}</Text>
             <View style={styles.summaryRow}>
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryLabel}>↘  Income</Text>
-                <Text style={styles.summaryValue}>₹{income.toLocaleString('en-IN')}</Text>
+              <View style={styles.incomeSummaryCardLightGreen}>
+                <Text style={styles.incomeSummaryLabelLightGreen}>↘  Income</Text>
+                <Text style={styles.incomeSummaryValueLightGreen}>₹{income.toLocaleString('en-IN')}</Text>
               </View>
               <View style={styles.expenseSummaryCardLightRed}>
                 <Text style={styles.expenseSummaryLabelLightRed}>↗  Expense</Text>
@@ -402,7 +388,7 @@ export function HomeScreen({
           ['Budget', 'budget'],
           ['Profile', 'user'],
         ].map(([label, icon]) => (
-          <Pressable key={label} style={styles.navItem} onPress={() => navigate(label)}>
+          <Pressable key={label} style={styles.navItem} onPress={() => navigate(label)} accessibilityRole="tab" accessibilityState={{ selected: activeTab === label }} accessibilityLabel={`${label} tab`}>
             <AppIcon name={icon} color={activeTab === label ? green : '#99A3B3'} size={23} />
             <Text style={[styles.navLabel, activeTab === label && styles.activeNavLabel]}>{label}</Text>
           </Pressable>
@@ -410,7 +396,7 @@ export function HomeScreen({
       </View>
 
       {/* Floating Add Button */}
-      <Pressable style={({ pressed }) => [styles.floatingButton, { bottom: 80 + insets.bottom }, pressed && styles.pressedButton]} onPress={onAdd}>
+      <Pressable style={({ pressed }) => [styles.floatingButton, { bottom: 80 + insets.bottom }, pressed && styles.pressedButton]} onPress={onAdd} accessibilityRole="button" accessibilityLabel="Add transaction">
         <AppIcon name="plus" size={31} />
       </Pressable>
 

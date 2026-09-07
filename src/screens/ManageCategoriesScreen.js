@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { AppIcon } from '../components/AppIcon';
 import { categories as defaultCategories } from '../data/appData';
 import { green, styles } from '../styles/styles';
@@ -13,6 +13,7 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
   const [selectedIcon, setSelectedIcon] = useState('food');
   const [selectedColor, setSelectedColor] = useState('#EF4444');
   const [showAddForm, setShowAddForm] = useState(false);
+  const scrollViewRef = useRef(null);
 
   const allCategories = customCategories && customCategories.length > 0 ? customCategories : defaultCategories;
   const filteredCategories = allCategories.filter((c) => c.type === activeType);
@@ -55,6 +56,7 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
   };
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <View style={[styles.formScreen, darkMode && { backgroundColor: '#040C08' }]}>
       <View style={[styles.formHero, darkMode && { backgroundColor: '#0B2E21' }]}>
         <View style={styles.formHeader}>
@@ -69,7 +71,7 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
       </View>
 
       <View style={[styles.formPanel, darkMode && { backgroundColor: '#091510' }]}>
-        <ScrollView style={styles.formPanelContent} contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 240 }]} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollViewRef} style={styles.formPanelContent} contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 260 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {/* Type Switcher */}
           <View style={[styles.typeToggle, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', borderWidth: 1 }]}>
             <Pressable style={[styles.typeOption, activeType === 'Expense' && (darkMode ? { backgroundColor: '#EF4444' } : styles.selectedType)]} onPress={() => setActiveType('Expense')}>
@@ -94,6 +96,8 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
                 placeholder="Category Name (e.g. Pet Care)"
                 placeholderTextColor="#94A3B8"
                 style={[styles.addCatInput, darkMode && { backgroundColor: '#091510', borderColor: 'rgba(16,185,129,0.2)', color: '#FFF' }]}
+                onFocus={() => setTimeout(() => scrollViewRef.current?.scrollTo({ y: 130, animated: true }), 120)}
+                accessibilityLabel="New category name"
               />
 
               <Text style={[styles.addCatPickerLabel, darkMode && { color: '#A7F3D0' }]}>Select Icon</Text>
@@ -151,5 +155,6 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
         </ScrollView>
       </View>
     </View>
+    </KeyboardAvoidingView>
   );
 }

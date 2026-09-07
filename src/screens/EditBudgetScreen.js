@@ -53,7 +53,7 @@ export function EditBudgetScreen({ budgets = {}, categories = defaultCategories,
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={[styles.formScreen, darkMode && { backgroundColor: '#040C08' }]}>
         <View style={[styles.formHero, darkMode && { backgroundColor: '#0B2E21' }]}>
           <View style={styles.formHeader}>
@@ -71,7 +71,7 @@ export function EditBudgetScreen({ budgets = {}, categories = defaultCategories,
           <ScrollView
             ref={scrollViewRef}
             style={styles.formPanelContent}
-            contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 20 }]}
+            contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 110 }]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
@@ -87,6 +87,7 @@ export function EditBudgetScreen({ budgets = {}, categories = defaultCategories,
                     value={inputBudgets[cat.name] || ''}
                     onChangeText={(text) => handleInputChange(cat.name, text)}
                     onFocus={() => handleFocus(index)}
+                    accessibilityLabel={`${cat.name} monthly budget`}
                     keyboardType="numeric"
                     placeholder="0"
                     placeholderTextColor="#94A3B8"
@@ -108,7 +109,7 @@ export function EditBudgetScreen({ budgets = {}, categories = defaultCategories,
               borderTopColor: darkMode ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
             }}
           >
-            <Pressable style={({ pressed }) => [styles.saveButton, { marginTop: 0 }, darkMode && { backgroundColor: '#10B981' }, pressed && styles.pressedButton]} onPress={handleSave}>
+            <Pressable style={({ pressed }) => [styles.saveButton, { marginTop: 0 }, darkMode && { backgroundColor: '#10B981' }, pressed && styles.pressedButton]} onPress={handleSave} accessibilityRole="button" accessibilityLabel="Save category budgets">
               <Text style={[styles.saveButtonText, darkMode && { color: '#000000' }]}>Save Category Budgets</Text>
             </Pressable>
           </View>
