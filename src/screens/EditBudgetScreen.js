@@ -101,11 +101,11 @@ export function EditBudgetScreen({ budgets: budgetsProp, categories = defaultCat
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={[styles.formScreen, darkMode && { backgroundColor: '#040C08' }]}>
+      <View style={[styles.formScreen, { backgroundColor: darkMode ? '#040C08' : '#FFFFFF' }]}>
           <ScrollView
             ref={scrollViewRef}
-            style={styles.formPanelContent}
-            contentContainerStyle={{ paddingBottom: 24 }}
+            style={[styles.formPanelContent, { backgroundColor: darkMode ? '#091510' : '#FFFFFF' }]}
+            contentContainerStyle={{ flexGrow: 1, backgroundColor: darkMode ? '#091510' : '#FFFFFF', paddingBottom: 24 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
@@ -122,7 +122,7 @@ export function EditBudgetScreen({ budgets: budgetsProp, categories = defaultCat
           <Text style={styles.editBudgetSubtitle}>Edit budget limits and toggle active status for each category</Text>
         </View>
 
-        <View style={[styles.formPanel, { flex: 0, padding: 20 }, darkMode && { backgroundColor: '#091510' }]}>
+        <View style={[styles.formPanel, { flex: 0, flexGrow: 1, padding: 20 }, darkMode && { backgroundColor: '#091510' }]}>
             {expenseCategories.map((cat, index) => {
               const isBudgetActive = activeBudgets[cat.name] !== false;
               return (

@@ -205,11 +205,11 @@ export function TransactionFormScreen({
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={[styles.formScreen, darkMode && { backgroundColor: '#040C08' }]}>
+      <View style={[styles.formScreen, { backgroundColor: darkMode ? '#040C08' : '#FFFFFF' }]}>
           <ScrollView
             ref={scrollViewRef}
-            style={styles.formPanelContent}
-            contentContainerStyle={{ paddingBottom: 24 }}
+            style={[styles.formPanelContent, { backgroundColor: darkMode ? '#091510' : '#FFFFFF' }]}
+            contentContainerStyle={{ flexGrow: 1, backgroundColor: darkMode ? '#091510' : '#FFFFFF', paddingBottom: 24 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
@@ -237,7 +237,7 @@ export function TransactionFormScreen({
             />
           </View>
         </View>
-        <View style={[styles.formPanel, { flex: 0, padding: 20 }, darkMode && { backgroundColor: '#091510' }]}>
+        <View style={[styles.formPanel, { flex: 0, flexGrow: 1, padding: 20 }, darkMode && { backgroundColor: '#091510' }]}>
             <View style={[styles.typeToggle, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', borderWidth: 1 }]}>
               <Pressable style={[styles.typeOption, type === 'Expense' && (darkMode ? { backgroundColor: '#EF4444' } : styles.selectedType)]} onPress={() => handleTypeChange('Expense')}>
                 <Text style={[styles.typeText, type === 'Expense' && (darkMode ? { color: '#FFF', fontWeight: '800' } : styles.expenseTypeText)]}>Expense</Text>
@@ -375,7 +375,7 @@ export function TransactionFormScreen({
                         <Text style={{ fontSize: 12, fontWeight: '700', color: darkMode ? '#A7F3D0' : '#475569', marginBottom: 6 }}>
                           Repeat Day of Week
                         </Text>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                        <View style={{ flexDirection: 'row', gap: 4 }}>
                           {[
                             { label: 'Sun', value: 0 },
                             { label: 'Mon', value: 1 },
@@ -391,12 +391,11 @@ export function TransactionFormScreen({
                                 key={day.label}
                                 onPress={() => setRepeatDayOfWeek(day.value)}
                                 style={{
-                                  flexGrow: 1,
-                                  minWidth: 44,
-                                  paddingVertical: 12,
-                                  minHeight: 44,
+                                  flex: 1,
+                                  paddingVertical: 10,
                                   borderRadius: 8,
                                   alignItems: 'center',
+                                  justifyContent: 'center',
                                   backgroundColor: isSelected ? green : darkMode ? '#091510' : '#FFF',
                                   borderWidth: isSelected ? 0 : 1,
                                   borderColor: darkMode ? 'rgba(16,185,129,0.3)' : '#CBD5E1',
@@ -418,7 +417,7 @@ export function TransactionFormScreen({
                         <Text style={{ fontSize: 12, fontWeight: '700', color: darkMode ? '#A7F3D0' : '#475569', marginBottom: 6 }}>
                           Repeat Day of Month ({repeatDayOfMonth})
                         </Text>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
                           {Array.from({ length: 31 }, (_, i) => i + 1).map((dayNum) => {
                             const isSelected = repeatDayOfMonth === dayNum;
                             return (
@@ -426,8 +425,8 @@ export function TransactionFormScreen({
                                 key={dayNum}
                                 onPress={() => setRepeatDayOfMonth(dayNum)}
                                 style={{
-                                  width: 44,
-                                  height: 44,
+                                  width: 36,
+                                  height: 36,
                                   borderRadius: 18,
                                   alignItems: 'center',
                                   justifyContent: 'center',
@@ -442,7 +441,7 @@ export function TransactionFormScreen({
                               </Pressable>
                             );
                           })}
-                        </View>
+                        </ScrollView>
                       </View>
                     )}
 
@@ -498,9 +497,11 @@ export function TransactionFormScreen({
                   </View>
                 )}
               </View>}
-            <Text style={{ color: darkMode ? '#94A3B8' : '#475569', marginTop: 12 }}>
-              {editingOccurrence ? 'Changes apply only to this entry. Manage the schedule in Profile → Recurring Rules.' : editingRule ? 'Changes apply after today. Turning this off pauses the schedule; existing entries stay unchanged.' : isRecurring ? (editing ? 'This entry is kept once. Future repeats start after today.' : 'Due dates are added while the app is open or when you return. Past due dates are included. Monthly dates 29–31 use the last day of shorter months.') : ''}
-            </Text>
+            {(editingOccurrence || editingRule) ? (
+              <Text style={{ color: darkMode ? '#94A3B8' : '#475569', marginTop: 12 }}>
+                {editingOccurrence ? 'Changes apply only to this entry. Manage the schedule in Profile → Recurring Rules.' : 'Changes apply after today. Turning this off pauses the schedule; existing entries stay unchanged.'}
+              </Text>
+            ) : null}
 
             <Text style={[styles.categoryHeading, darkMode && { color: '#FFF' }]}>{type} Category</Text>
             {filteredCategories.length === 0 && <Text style={{ color: darkMode ? '#CBD5E1' : '#475569' }}>No active categories. Open Profile → Manage Categories to enable one.</Text>}
