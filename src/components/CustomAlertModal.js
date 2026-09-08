@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     backgroundColor: '#E6F9F2',
     alignItems: 'center',
-    justify: 'center',
+    justifyContent: 'center',
     marginBottom: 14,
   },
   destructiveIconCircle: {

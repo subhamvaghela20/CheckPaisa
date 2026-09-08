@@ -5,6 +5,7 @@ import { AppIcon } from '../components/AppIcon';
 import { categories as defaultCategories } from '../data/appData';
 import { formatDate } from '../utils/date';
 import { green, styles } from '../styles/styles';
+import { ruleStatus } from '../utils/recurringProcessor';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const getFrequencyLabel = (rule) => {
@@ -46,7 +47,7 @@ export function ManageRecurringScreen({
   };
 
   return (
-    <View style={[styles.detailsScreen, { paddingTop: insets.top }, darkMode && { backgroundColor: '#040C08' }]}>
+    <View style={[styles.detailsScreen, { paddingTop: 12, paddingHorizontal: 12 }, darkMode && { backgroundColor: '#040C08' }]}>
       {/* Top Header */}
       <View style={styles.detailsHeader}>
         <Pressable
@@ -80,7 +81,8 @@ export function ManageRecurringScreen({
           recurringRules.map((rule) => {
             const catObj = categories.find((c) => c.name === rule.category);
             const iconColor = rule.type === 'Income' ? '#10B981' : '#EF4444';
-            const isActive = rule.isActive !== false;
+            const status = ruleStatus(rule);
+            const isActive = ['Active', 'Scheduled'].includes(status);
 
             return (
               <View
@@ -97,7 +99,7 @@ export function ManageRecurringScreen({
                   !isActive && { opacity: 0.6 },
                 ]}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <View style={{ marginBottom: 10, gap: 10 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
                     <View
                       style={[
@@ -108,12 +110,12 @@ export function ManageRecurringScreen({
                       <AppIcon name={catObj?.icon || 'other'} color={iconColor} size={20} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={[{ fontSize: 16, fontWeight: '700', color: '#1E293B' }, darkMode && { color: '#FFF' }]}>
+                      <View style={{ alignItems: 'flex-start', gap: 6 }}>
+                        <Text style={[{ fontSize: 16, fontWeight: '700', color: '#1E293B', flexShrink: 1 }, darkMode && { color: '#FFF' }]}>
                           {rule.category}
                         </Text>
                         <View style={{ backgroundColor: 'rgba(16,185,129,0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
-                          <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '800' }}>{getFrequencyLabel(rule)}</Text>
+                          <Text style={{ fontSize: 12, color: darkMode ? '#A7F3D0' : '#166534', fontWeight: '800' }}>{getFrequencyLabel(rule)} · {status}</Text>
                         </View>
                       </View>
                       {rule.note ? (
@@ -132,23 +134,25 @@ export function ManageRecurringScreen({
                 {/* Date range details */}
                 <View
                   style={{
-                    flexDirection: 'row',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    justify: 'space-between',
+                    gap: 10,
                     paddingTop: 10,
                     borderTopWidth: 1,
                     borderTopColor: darkMode ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
                   }}
                 >
-                  <View style={{ flex: 1 }}>
+                  <View style={{ width: '100%' }}>
                     <Text style={[{ fontSize: 11, color: '#94A3B8' }]}>
                       📅 {formatDate(new Date(rule.fromDate))} → {formatDate(new Date(rule.toDate))}
                     </Text>
                   </View>
 
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, width: '100%' }}>
                     <Switch
                       value={isActive}
+                      disabled={status === 'Completed' || status === 'Invalid'}
+                      accessibilityLabel={`Pause or resume ${rule.category} schedule`}
                       onValueChange={() => onToggleRule?.(rule.id)}
                       trackColor={{ false: '#CBD5E1', true: green }}
                       thumbColor="#FFFFFF"
@@ -156,7 +160,7 @@ export function ManageRecurringScreen({
 
                     <Pressable
                       onPress={() => onEditRule?.(rule)}
-                      style={{ padding: 4 }}
+                      style={{ padding: 12, minWidth: 44, minHeight: 44 }}
                       accessibilityRole="button"
                       accessibilityLabel="Edit rule"
                     >
@@ -165,7 +169,7 @@ export function ManageRecurringScreen({
 
                     <Pressable
                       onPress={() => confirmDelete(rule.id)}
-                      style={{ padding: 4 }}
+                      style={{ padding: 12, minWidth: 44, minHeight: 44 }}
                       accessibilityRole="button"
                       accessibilityLabel="Delete rule"
                     >

@@ -19,6 +19,10 @@ export function TransactionFormScreen({
 }) {
   const insets = useSafeAreaInsets();
   const editing = Boolean(transaction);
+  const editingRule = Boolean(transaction?.frequency && transaction?.fromDate);
+  const editingOccurrence = Boolean(transaction?.recurringRuleId && !editingRule);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   // Find matching recurring rule if editing a transaction linked to a rule or if editing a rule directly
   const matchingRule = React.useMemo(() => {
@@ -48,7 +52,7 @@ export function TransactionFormScreen({
   const [walletId, setWalletId] = useState(
     transaction?.walletId || matchingRule?.walletId || activeWalletId || (wallets.length > 0 ? wallets[0].id : 'default_wallet')
   );
-  const [note, setNote] = useState(transaction?.note || matchingRule?.note || '');
+  const [note, setNote] = useState((editingRule ? matchingRule?.note : transaction?.note) || '');
 
   const [transactionDate, setTransactionDate] = useState(() => {
     if (transaction?.createdAt) return new Date(transaction.createdAt);
@@ -59,7 +63,7 @@ export function TransactionFormScreen({
 
   // Recurring Transaction States
   const [isRecurring, setIsRecurring] = useState(
-    Boolean(transaction?.isRecurring || matchingRule || transaction?.frequency)
+    Boolean(editingRule)
   );
 
   const initialFromDate = React.useMemo(() => {
@@ -99,32 +103,28 @@ export function TransactionFormScreen({
   const scrollViewRef = useRef(null);
 
   const availableCategories = categories && categories.length > 0 ? categories : defaultCategories;
-  const filteredCategories = availableCategories.filter((item) => item.type === type && item.isActive !== false);
+  const filteredCategories = availableCategories.filter((item) => item.type === type && (item.isActive !== false || (editing && item.name === transaction.category)));
 
   useEffect(() => {
-    if (!walletId && wallets.length > 0) {
+    if (!wallets.some((wallet) => wallet.id === walletId) && wallets.length > 0) {
       const defaultW = wallets.find((w) => w.id === activeWalletId) || wallets[0];
       if (defaultW) setWalletId(defaultW.id);
     }
   }, [wallets, activeWalletId]);
 
-  useEffect(() => {
-    const keyboardHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    });
 
-    return () => {
-      keyboardHideListener.remove();
-    };
-  }, []);
 
   const handleTypeChange = (newType) => {
     setType(newType);
-    const available = availableCategories.filter((item) => item.type === newType);
+    const available = availableCategories.filter((item) => item.type === newType && item.isActive !== false);
     if (available.length > 0 && !available.some((item) => item.name === category)) {
       setCategory(available[0].name);
     }
   };
+
+  useEffect(() => {
+    if (!filteredCategories.some((item) => item.name === category)) setCategory(filteredCategories[0]?.name || '');
+  }, [categories, type]);
 
   const updateDate = (_, selectedDate) => {
     setPickerMode(null);
@@ -147,20 +147,23 @@ export function TransactionFormScreen({
     setRecurringPickerMode(null);
   };
 
-  const save = () => {
+  const save = async () => {
+    if (savingRef.current) return;
     const numericAmount = Number(amount);
-    if (!numericAmount || numericAmount <= 0) return Alert.alert('Enter an amount', 'Please enter an amount greater than zero.');
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return Alert.alert('Enter an amount', 'Please enter an amount greater than zero.');
 
-    if (isRecurring && recurringFromDate > recurringToDate) {
+    if (!filteredCategories.some((item) => item.name === category)) return Alert.alert('Choose a category', 'Activate or add a category before saving.');
+
+    if (isRecurring && new Date(recurringFromDate).setHours(0, 0, 0, 0) > new Date(recurringToDate).setHours(0, 0, 0, 0)) {
       return Alert.alert('Invalid Date Range', 'Start Date cannot be after End Date.');
     }
 
-    const targetWalletId = walletId || activeWalletId || (wallets.length > 0 ? wallets[0].id : 'default_wallet');
-    const typeLabel = type === 'Income' ? 'Income' : 'Expense';
+    const targetWalletId = wallets.find((wallet) => wallet.id === walletId)?.id || wallets[0]?.id || 'default_wallet';
 
-    const ruleId = matchingRule?.id || transaction?.recurringRuleId || `rule_${Date.now()}`;
 
-    const recurringRule = isRecurring ? {
+    const ruleId = (editingRule ? matchingRule?.id : null) || `rule_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const recurringRule = isRecurring && !editingOccurrence ? {
       id: ruleId,
       type,
       amount: numericAmount,
@@ -182,36 +185,41 @@ export function TransactionFormScreen({
       amount: numericAmount,
       category,
       note: note.trim(),
-      createdAt: isRecurring ? recurringFromDate.toISOString() : transactionDate.toISOString(),
+      createdAt: transactionDate.toISOString(),
       walletId: targetWalletId,
-      isRecurring,
-      recurringRuleId: isRecurring ? ruleId : undefined,
+      isRecurring: editingOccurrence || isRecurring,
+      recurringRuleId: editingOccurrence ? transaction.recurringRuleId : isRecurring ? ruleId : undefined,
     };
 
-    Alert.alert(
-      editing ? 'Transaction updated' : 'Transaction added',
-      editing ? 'Your changes have been saved.' : `${typeLabel} entry ${isRecurring ? 'and recurring schedule ' : ''}added successfully!`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            onSave(savedTransaction, recurringRule);
-          },
-        },
-      ],
-      { cancelable: false }
-    );
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await onSave(editingRule ? null : savedTransaction, recurringRule, editingRule ? { editingRuleId: transaction.id } : {});
+    } catch (error) {
+      Alert.alert('Could not save', 'Your changes could not be saved. Please free device storage and try again.');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={[styles.formScreen, darkMode && { backgroundColor: '#040C08' }]}>
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.formPanelContent}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+
         <View style={[styles.formHero, darkMode && { backgroundColor: '#0B2E21' }]}>
           <View style={styles.formHeader}>
             <Pressable style={styles.formClose} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close transaction form" hitSlop={6}>
               <AppIcon name="back" size={20} color="#FFFFFF" />
             </Pressable>
-            <Text style={styles.formTitle}>{editing ? 'Edit Transaction' : 'Add Transaction'}</Text>
+            <Text style={styles.formTitle}>{editingRule ? 'Edit Recurring Rule' : editing ? 'Edit Transaction' : 'Add Transaction'}</Text>
             <View style={styles.headerBlank} />
           </View>
           <Text style={styles.howMuch}>Enter Amount</Text>
@@ -224,20 +232,12 @@ export function TransactionFormScreen({
               placeholder="0"
               placeholderTextColor="rgba(255,255,255,0.5)"
               style={styles.amountInput}
-              autoFocus
               selectionColor="#FFFFFF"
               accessibilityLabel="Transaction amount"
             />
           </View>
         </View>
-        <View style={[styles.formPanel, { flex: 1 }, darkMode && { backgroundColor: '#091510' }]}>
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.formPanelContent}
-            contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 110 }]}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
+        <View style={[styles.formPanel, { flex: 0, padding: 20 }, darkMode && { backgroundColor: '#091510' }]}>
             <View style={[styles.typeToggle, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', borderWidth: 1 }]}>
               <Pressable style={[styles.typeOption, type === 'Expense' && (darkMode ? { backgroundColor: '#EF4444' } : styles.selectedType)]} onPress={() => handleTypeChange('Expense')}>
                 <Text style={[styles.typeText, type === 'Expense' && (darkMode ? { color: '#FFF', fontWeight: '800' } : styles.expenseTypeText)]}>Expense</Text>
@@ -246,7 +246,7 @@ export function TransactionFormScreen({
                 <Text style={[styles.typeText, type === 'Income' && (darkMode ? { color: '#000', fontWeight: '800' } : styles.incomeTypeText)]}>Income</Text>
               </Pressable>
             </View>
-            {!isRecurring && (
+            {!isRecurring && !editingRule && (
               <>
                 <View style={styles.dateTimeRow}>
                   <Pressable style={[styles.dateTimeButton, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)' }]} onPress={() => setPickerMode('date')} accessibilityRole="button" accessibilityLabel="Select transaction date">
@@ -293,7 +293,7 @@ export function TransactionFormScreen({
             )}
 
             {/* Recurring Transaction Section */}
-            <View
+            {!editingOccurrence && <View
               style={{
                 marginTop: 18,
                 padding: 14,
@@ -316,7 +316,7 @@ export function TransactionFormScreen({
                       borderRadius: 12,
                       backgroundColor: isRecurring ? green : (darkMode ? 'rgba(255,255,255,0.08)' : '#E2E8F0'),
                       alignItems: 'center',
-                      justify: 'center',
+                      justifyContent: 'center',
                     }}
                   >
                     <Text style={{ fontSize: 18 }}>🔄</Text>
@@ -326,7 +326,7 @@ export function TransactionFormScreen({
                       Make Recurring Entry
                     </Text>
                     <Text style={{ fontSize: 11, color: darkMode ? '#94A3B8' : '#64748B', marginTop: 1 }}>
-                      Auto-generate entries automatically
+                      Repeat on scheduled dates
                     </Text>
                   </View>
                 </View>
@@ -375,7 +375,7 @@ export function TransactionFormScreen({
                         <Text style={{ fontSize: 12, fontWeight: '700', color: darkMode ? '#A7F3D0' : '#475569', marginBottom: 6 }}>
                           Repeat Day of Week
                         </Text>
-                        <View style={{ flexDirection: 'row', gap: 4, justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
                           {[
                             { label: 'Sun', value: 0 },
                             { label: 'Mon', value: 1 },
@@ -391,8 +391,10 @@ export function TransactionFormScreen({
                                 key={day.label}
                                 onPress={() => setRepeatDayOfWeek(day.value)}
                                 style={{
-                                  flex: 1,
-                                  paddingVertical: 7,
+                                  flexGrow: 1,
+                                  minWidth: 44,
+                                  paddingVertical: 12,
+                                  minHeight: 44,
                                   borderRadius: 8,
                                   alignItems: 'center',
                                   backgroundColor: isSelected ? green : darkMode ? '#091510' : '#FFF',
@@ -414,9 +416,9 @@ export function TransactionFormScreen({
                     {recurringFrequency === 'Monthly' && (
                       <View style={{ marginBottom: 12 }}>
                         <Text style={{ fontSize: 12, fontWeight: '700', color: darkMode ? '#A7F3D0' : '#475569', marginBottom: 6 }}>
-                          Repeat Date of Month ({repeatDayOfMonth}th)
+                          Repeat Day of Month ({repeatDayOfMonth})
                         </Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                           {Array.from({ length: 31 }, (_, i) => i + 1).map((dayNum) => {
                             const isSelected = repeatDayOfMonth === dayNum;
                             return (
@@ -424,11 +426,11 @@ export function TransactionFormScreen({
                                 key={dayNum}
                                 onPress={() => setRepeatDayOfMonth(dayNum)}
                                 style={{
-                                  width: 36,
-                                  height: 36,
+                                  width: 44,
+                                  height: 44,
                                   borderRadius: 18,
                                   alignItems: 'center',
-                                  justify: 'center',
+                                  justifyContent: 'center',
                                   backgroundColor: isSelected ? green : darkMode ? '#091510' : '#FFF',
                                   borderWidth: isSelected ? 0 : 1,
                                   borderColor: darkMode ? 'rgba(16,185,129,0.3)' : '#CBD5E1',
@@ -440,7 +442,7 @@ export function TransactionFormScreen({
                               </Pressable>
                             );
                           })}
-                        </ScrollView>
+                        </View>
                       </View>
                     )}
 
@@ -495,9 +497,13 @@ export function TransactionFormScreen({
                     )}
                   </View>
                 )}
-              </View>
+              </View>}
+            <Text style={{ color: darkMode ? '#94A3B8' : '#475569', marginTop: 12 }}>
+              {editingOccurrence ? 'Changes apply only to this entry. Manage the schedule in Profile → Recurring Rules.' : editingRule ? 'Changes apply after today. Turning this off pauses the schedule; existing entries stay unchanged.' : isRecurring ? (editing ? 'This entry is kept once. Future repeats start after today.' : 'Due dates are added while the app is open or when you return. Past due dates are included. Monthly dates 29–31 use the last day of shorter months.') : ''}
+            </Text>
 
             <Text style={[styles.categoryHeading, darkMode && { color: '#FFF' }]}>{type} Category</Text>
+            {filteredCategories.length === 0 && <Text style={{ color: darkMode ? '#CBD5E1' : '#475569' }}>No active categories. Open Profile → Manage Categories to enable one.</Text>}
             <View style={styles.categoryGrid}>
               {filteredCategories.map((item) => {
                 const isSelected = category === item.name;
@@ -515,7 +521,7 @@ export function TransactionFormScreen({
                       <AppIcon name={item.icon || 'other'} color={catColor} size={24} />
                     </View>
                     <Text style={[styles.categoryName, darkMode && { color: '#94A3B8' }, isSelected && { color: catColor, fontWeight: '800' }]}>
-                      {item.name}
+                      {item.name}{item.isActive === false ? ' (inactive)' : ''}
                     </Text>
                   </Pressable>
                 );
@@ -531,6 +537,7 @@ export function TransactionFormScreen({
               onFocus={() => setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 120)}
               accessibilityLabel="Transaction note"
             />
+        </View>
           </ScrollView>
 
           {/* Floating Action Button Footer */}
@@ -544,11 +551,10 @@ export function TransactionFormScreen({
               borderTopColor: darkMode ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
             }}
           >
-            <Pressable style={({ pressed }) => [styles.saveButton, { marginTop: 0 }, darkMode && { backgroundColor: '#10B981' }, pressed && styles.pressedButton]} onPress={save} accessibilityRole="button" accessibilityLabel="Save transaction">
-              <Text style={[styles.saveButtonText, darkMode && { color: '#000' }]}>{editing ? 'Save Changes' : 'Add Transaction'}</Text>
+            <Pressable style={({ pressed }) => [styles.saveButton, { marginTop: 0 }, darkMode && { backgroundColor: '#10B981' }, pressed && styles.pressedButton]} disabled={saving} onPress={save} accessibilityRole="button" accessibilityLabel="Save transaction">
+              <Text style={[styles.saveButtonText, darkMode && { color: '#000' }]}>{saving ? 'Saving…' : editing ? 'Save Changes' : isRecurring ? 'Save Recurring Rule' : 'Add Transaction'}</Text>
             </Pressable>
           </View>
-        </View>
       </View>
     </KeyboardAvoidingView>
   );

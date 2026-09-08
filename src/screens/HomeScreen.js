@@ -71,7 +71,11 @@ export function HomeScreen({
     })
     .reduce((total, item) => total + item.amount, 0);
 
-  const totalBudget = budgets ? Object.values(budgets).reduce((sum, b) => sum + Number(b), 0) : 0;
+  const totalBudget = Object.entries(budgets || {}).reduce((sum, [name, entry]) => {
+    const category = customCategories.find((item) => item.name === name);
+    const amount = Number(typeof entry === 'object' && entry !== null ? entry.amount : entry);
+    return category?.isActive !== false && entry?.isActive !== false && Number.isFinite(amount) ? sum + amount : sum;
+  }, 0);
   const budgetProgress = totalBudget > 0 ? Math.min((currentMonthExpense / totalBudget) * 100, 100) : 0;
 
   const navigate = (tab) => {
@@ -188,7 +192,7 @@ export function HomeScreen({
 
                       <View style={styles.transactionRowText}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Text style={styles.darkHomeRowTitle}>{transaction.category}</Text>
+                          <Text numberOfLines={2} style={[styles.darkHomeRowTitle, { flexShrink: 1 }]}>{transaction.category}</Text>
                           {transaction.isRecurring ? (
                             <View style={{ backgroundColor: 'rgba(16,185,129,0.2)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 6 }}>
                               <Text style={{ fontSize: 10, color: '#10B981', fontWeight: '800' }}>🔄</Text>
@@ -373,7 +377,7 @@ export function HomeScreen({
                     </View>
                     <View style={styles.transactionRowText}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={styles.transactionRowTitle}>{transaction.category}</Text>
+                        <Text numberOfLines={2} style={[styles.transactionRowTitle, { flexShrink: 1 }]}>{transaction.category}</Text>
                         {transaction.isRecurring ? (
                           <View style={{ backgroundColor: 'rgba(16,185,129,0.15)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 6 }}>
                             <Text style={{ fontSize: 10, color: green, fontWeight: '800' }}>🔄</Text>

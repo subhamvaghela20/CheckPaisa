@@ -11,7 +11,7 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 export function BudgetScreen({ transactions = [], budgets = null, customCategories = defaultCategories, activeWalletId, darkMode = false, onOpenEditBudget, onAdd, onOpenTransaction, onNavigate }) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('Budget');
-  const [currentDate] = useState(new Date());
+  const currentDate = new Date();
 
   const selectedYear = currentDate.getFullYear();
   const selectedMonth = currentDate.getMonth();
@@ -45,10 +45,10 @@ export function BudgetScreen({ transactions = [], budgets = null, customCategori
       const percentage = budgetLimit > 0 ? Math.round((spent / budgetLimit) * 100) : 0;
       return { ...cat, budget: budgetLimit, spent, isExceeded, percentage, isBudgetActive };
     })
-    .filter((cat) => (cat.budget > 0 || cat.spent > 0) && cat.isActive !== false);
+    .filter((cat) => cat.budget > 0 || cat.spent > 0);
 
   const totalBudget = categoryBudgets.reduce((sum, c) => sum + c.budget, 0);
-  const totalSpent = categoryBudgets.reduce((sum, c) => sum + c.spent, 0);
+  const totalSpent = currentMonthExpenses.reduce((sum, tx) => sum + tx.amount, 0);
   const exceededList = categoryBudgets.filter((c) => c.isExceeded);
   const topExceeded = exceededList[0];
 
@@ -109,7 +109,7 @@ export function BudgetScreen({ transactions = [], budgets = null, customCategori
 
             {/* Total Budget Summary Row */}
             <View style={styles.budgetTotalSummaryRow}>
-              <Text style={[styles.budgetTotalLabel, darkMode && { color: '#94A3B8' }]}>Total Budget Progress</Text>
+              <Text style={[styles.budgetTotalLabel, darkMode && { color: '#94A3B8' }]}>All spending / active limits</Text>
               <Text style={[styles.budgetTotalValues, darkMode && { color: '#10B981' }]}>
                 ₹{totalSpent.toLocaleString('en-IN')} / ₹{totalBudget.toLocaleString('en-IN')}
               </Text>
@@ -119,7 +119,7 @@ export function BudgetScreen({ transactions = [], budgets = null, customCategori
                 style={[
                   styles.budgetTotalFill,
                   {
-                    width: `${Math.min((totalSpent / (totalBudget || 1)) * 100, 100)}%`,
+                    width: `${totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0}%`,
                     backgroundColor: totalSpent > totalBudget ? '#EF4444' : green,
                   },
                 ]}
@@ -138,7 +138,7 @@ export function BudgetScreen({ transactions = [], budgets = null, customCategori
                       <View style={[styles.transactionCategoryIcon, { backgroundColor: `${item.color}18`, width: 34, height: 34 }]}>
                         <AppIcon name={item.icon} color={item.color} size={18} />
                       </View>
-                      <Text style={[styles.categoryBudgetName, darkMode && { color: '#FFF' }]}>{item.name}</Text>
+                      <Text style={[styles.categoryBudgetName, { flexShrink: 1 }, darkMode && { color: '#FFF' }]}>{item.name}{!item.isBudgetActive ? ' (paused)' : ''}</Text>
                     </View>
 
                     <View style={styles.categoryBudgetRight}>

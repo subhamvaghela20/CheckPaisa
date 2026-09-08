@@ -21,7 +21,7 @@ export function TransactionDetailsScreen({ transaction, categories = defaultCate
   };
 
   return (
-    <View style={[{ flex: 1, backgroundColor: darkMode ? '#040C08' : '#F8FAFC', paddingTop: insets.top }]}>
+    <View style={[{ flex: 1, backgroundColor: darkMode ? '#040C08' : '#F8FAFC', paddingTop: 12 }]}>
       {/* Header */}
       <View style={styles.detailsHeader}>
         <Pressable
@@ -50,7 +50,7 @@ export function TransactionDetailsScreen({ transaction, categories = defaultCate
           ]}
         >
           {/* Top Hero Row: Category Icon + Category Name + Amount (all in one line, centered) */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <View style={{ marginBottom: 16, gap: 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
               <View
                 style={{

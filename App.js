@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { BackHandler, SafeAreaView } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, AppState, BackHandler } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { categories as defaultCategories } from './src/data/appData';
 import { AdvancedReportsScreen } from './src/screens/AdvancedReportsScreen';
@@ -30,6 +30,7 @@ import {
   loadTransactions,
   loadUser,
   loadWallets,
+  saveLedger,
   saveBudgets,
   saveCategories,
   saveCurrency,
@@ -43,6 +44,7 @@ import {
   updateUserProfile,
 } from './src/utils/storage';
 import { processRecurringRules } from './src/utils/recurringProcessor';
+import { applyTransactionSave, migrateCategory } from './src/utils/ledger';
 import { styles } from './src/styles/styles';
 
 const SCREENS = {
@@ -65,7 +67,13 @@ const SCREENS = {
 
 export default function App() {
   const [history, setHistory] = useState([SCREENS.SPLASH]);
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, updateTransactions] = useState([]);
+  const txRef = useRef([]);
+  const setTransactions = (value) => {
+    const next = typeof value === 'function' ? value(txRef.current) : value;
+    txRef.current = next;
+    updateTransactions(next);
+  };
   const [budgets, setBudgets] = useState(null);
   const [currency, setCurrency] = useState('INR (₹)');
   const [darkMode, setDarkMode] = useState(false);
@@ -75,7 +83,34 @@ export default function App() {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [wallets, setWallets] = useState(DEFAULT_WALLETS);
   const [activeWalletId, setActiveWalletId] = useState('default_wallet');
-  const [recurringRules, setRecurringRules] = useState([]);
+  const [recurringRules, updateRules] = useState([]);
+  const rulesRef = useRef([]);
+  const readyRef = useRef(false);
+  const sessionRef = useRef(0);
+  const setRecurringRules = (value) => {
+    const next = typeof value === 'function' ? value(rulesRef.current) : value;
+    rulesRef.current = next;
+    updateRules(next);
+  };
+  const refreshRef = useRef(null);
+  const mutationQueue = useRef(Promise.resolve());
+  const pendingMutations = useRef(0);
+  const retryAfter = useRef(0);
+  const renderSession = sessionRef.current;
+  const mutate = (task, propagate = false) => {
+    const session = renderSession;
+    pendingMutations.current += 1;
+    const operation = mutationQueue.current.catch(() => {}).then(async () => {
+      if (session !== sessionRef.current) throw new Error('Account changed. Please try again.');
+      return task();
+    });
+    mutationQueue.current = operation;
+    return operation.catch((error) => {
+      if (propagate) throw error;
+      Alert.alert('Could not save', error.message || 'Please free device storage and try again.');
+      return { success: false };
+    }).finally(() => { pendingMutations.current -= 1; });
+  };
 
   const currentScreen = history[history.length - 1] || SCREENS.HOME;
 
@@ -124,112 +159,71 @@ export default function App() {
     return () => backSubscription.remove();
   }, [history, currentScreen]);
 
-  // Initial Splash Screen Timer & Auto-Login Check
-  useEffect(() => {
-    const splashTimer = setTimeout(async () => {
-      const storedUser = await loadUser();
-      if (storedUser && storedUser.email) {
-        setHistory([SCREENS.HOME]);
-      } else {
-        setHistory([SCREENS.ONBOARDING]);
-      }
-    }, 1700);
+  const loadAccount = async (activeUser) => {
+    readyRef.current = false;
+    const session = ++sessionRef.current;
+    const [tx, rules, b, w, cats, c, n] = await Promise.all([
+      loadTransactions(activeUser.email), loadRecurringRules(activeUser.email),
+      loadBudgets(activeUser.email), loadWallets(activeUser.email), loadCategories(activeUser.email),
+      loadCurrency(activeUser.email), loadNotifications(activeUser.email),
+    ]);
+    if (session !== sessionRef.current) return;
+    setUser(activeUser);
+    setTransactions(Array.isArray(tx) ? tx : []);
+    setRecurringRules(Array.isArray(rules) ? rules : []);
+    setBudgets(b);
+    const accountWallets = Array.isArray(w) && w.length ? w : DEFAULT_WALLETS;
+    setWallets(accountWallets);
+    setActiveWalletId(accountWallets[0].id);
+    setCustomCategories(Array.isArray(cats) && cats.length ? cats : defaultCategories);
+    setCurrency(c);
+    setNotifications(n);
+    readyRef.current = true;
+  };
 
-    return () => clearTimeout(splashTimer);
+  useEffect(() => {
+    let canceled = false;
+    (async () => {
+      setDarkMode(await loadDarkMode());
+      const storedUser = await loadUser();
+      if (canceled) return;
+      if (storedUser?.email) {
+        await loadAccount(storedUser);
+        const setup = await loadSetupCompleted(storedUser.email);
+        if (!canceled) setHistory([setup || storedUser.isGuest ? SCREENS.HOME : SCREENS.INITIAL_SETUP]);
+      } else setHistory([SCREENS.ONBOARDING]);
+    })().catch(() => { if (!canceled) setHistory([SCREENS.LOGIN]); });
+    return () => { canceled = true; readyRef.current = false; sessionRef.current += 1; };
   }, []);
 
-  // Initial Data Loader
-  useEffect(() => {
-    loadUser().then((storedUser) => {
-      const activeUser = storedUser || { name: 'Siddharajsinh', email: 'siddharajsinh@example.com' };
-      setUser(activeUser);
-
-      loadTransactions(activeUser.email).then((storedTx) => {
-        if (Array.isArray(storedTx)) setTransactions(storedTx);
-      });
-
-      loadBudgets(activeUser.email).then((storedBudgets) => {
-        if (storedBudgets) setBudgets(storedBudgets);
-      });
-
-      loadWallets(activeUser.email).then((storedWallets) => {
-        if (Array.isArray(storedWallets) && storedWallets.length > 0) {
-          setWallets(storedWallets);
-          setActiveWalletId(storedWallets[0].id);
-        }
-      });
-      loadCategories(activeUser.email).then((storedCats) => {
-        if (Array.isArray(storedCats) && storedCats.length > 0) setCustomCategories(storedCats);
-        else setCustomCategories(defaultCategories);
-      });
-      loadCurrency(activeUser.email).then(setCurrency);
-      loadNotifications(activeUser.email).then(setNotifications);
-
-      loadRecurringRules(activeUser.email).then(async (storedRules) => {
-        if (Array.isArray(storedRules)) setRecurringRules(storedRules);
-        if (Array.isArray(storedRules) && storedRules.length > 0) {
-          const currentTx = (await loadTransactions(activeUser.email)) || [];
-          const { newTransactions, updatedRules } = processRecurringRules(storedRules, currentTx);
-          if (newTransactions.length > 0) {
-            const finalTx = [...newTransactions, ...currentTx];
-            setTransactions(finalTx);
-            saveTransactions(finalTx, activeUser.email);
-          }
-          if (JSON.stringify(updatedRules) !== JSON.stringify(storedRules)) {
-            setRecurringRules(updatedRules);
-            saveRecurringRules(updatedRules, activeUser.email);
-          }
-        }
-      });
+  // Reconcile on foreground return and while open (including midnight).
+  refreshRef.current = () => {
+    if (!readyRef.current || pendingMutations.current || Date.now() < retryAfter.current || AppState.currentState === 'background') return;
+    const result = processRecurringRules(rulesRef.current, txRef.current);
+    if (JSON.stringify(result.updatedRules) === JSON.stringify(rulesRef.current) && !result.newTransactions.length) return;
+    mutate(async () => {
+      const nextTx = [...result.newTransactions, ...txRef.current];
+      try {
+        await saveLedger(nextTx, result.updatedRules, user.email);
+        setTransactions(nextTx);
+        setRecurringRules(result.updatedRules);
+      } catch (error) {
+        retryAfter.current = Date.now() + 60000;
+        throw error;
+      }
     });
-
-    loadDarkMode().then((isDark) => setDarkMode(isDark));
+  };
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') refreshRef.current?.(); });
+    const timer = setInterval(() => refreshRef.current?.(), 1000);
+    return () => { subscription.remove(); clearInterval(timer); };
   }, []);
 
   const handleLoginSuccess = async (userData) => {
-    setUser(userData);
     await saveUser(userData);
-
-    const txs = await loadTransactions(userData.email);
-    setTransactions(txs);
-
-    const b = await loadBudgets(userData.email);
-    setBudgets(b);
-
-    const w = await loadWallets(userData.email);
-    if (Array.isArray(w) && w.length > 0) {
-      setWallets(w);
-      setActiveWalletId(w[0].id);
-    }
-
-    const cats = await loadCategories(userData.email);
-    setCustomCategories(Array.isArray(cats) && cats.length > 0 ? cats : defaultCategories);
-    setCurrency(await loadCurrency(userData.email));
-    setNotifications(await loadNotifications(userData.email));
-
-    const rules = await loadRecurringRules(userData.email);
-    setRecurringRules(rules || []);
-    if (Array.isArray(rules) && rules.length > 0) {
-      const { newTransactions, updatedRules } = processRecurringRules(rules, txs || []);
-      if (newTransactions.length > 0) {
-        const finalTx = [...newTransactions, ...(txs || [])];
-        setTransactions(finalTx);
-        saveTransactions(finalTx, userData.email);
-      }
-      if (JSON.stringify(updatedRules) !== JSON.stringify(rules)) {
-        setRecurringRules(updatedRules);
-        saveRecurringRules(updatedRules, userData.email);
-      }
-    }
-
+    await loadAccount(userData);
     const isSetupDone = await loadSetupCompleted(userData.email);
-
-    // If setup not completed yet for registered user (not guest):
-    if (!isSetupDone && !userData.isGuest) {
-      setHistory([SCREENS.INITIAL_SETUP]);
-    } else {
-      setHistory([SCREENS.HOME]);
-    }
+    setHistory([isSetupDone || userData.isGuest ? SCREENS.HOME : SCREENS.INITIAL_SETUP]);
   };
 
   const handleCompleteInitialSetup = async ({ wallet, budgets: newBudgets }) => {
@@ -247,67 +241,79 @@ export default function App() {
 
   const handleGuestContinue = async () => {
     const guestUser = { name: 'Guest User', email: 'guest@checkpaisa.app', isGuest: true };
-    setUser(guestUser);
     await saveUser(guestUser);
-
-    loadTransactions(guestUser.email).then(setTransactions);
-    loadBudgets(guestUser.email).then(setBudgets);
-    loadWallets(guestUser.email).then((w) => {
-      if (Array.isArray(w) && w.length > 0) {
-        setWallets(w);
-        setActiveWalletId(w[0].id);
-      }
-    });
-    loadCategories(guestUser.email).then((cats) => setCustomCategories(Array.isArray(cats) && cats.length > 0 ? cats : defaultCategories));
-    loadCurrency(guestUser.email).then(setCurrency);
-    loadNotifications(guestUser.email).then(setNotifications);
-    loadRecurringRules(guestUser.email).then((r) => setRecurringRules(Array.isArray(r) ? r : []));
+    await loadAccount(guestUser);
     setHistory([SCREENS.HOME]);
   };
 
   const handleUpdateProfile = async (updatedUser) => {
-    const result = await updateUserProfile(user.email, updatedUser);
-    if (!result.success) return result;
-    setUser(updatedUser);
-    await saveUser(updatedUser);
-    return result;
+    return mutate(async () => {
+      const result = await updateUserProfile(user.email, updatedUser);
+      if (!result.success) return result;
+      setUser(updatedUser);
+      await saveUser(updatedUser);
+      return result;
+    }, false);
   };
 
-  const handleUpdateCategories = async (updatedCategories) => {
-    setCustomCategories(updatedCategories);
-    await saveCategories(updatedCategories, user.email);
+  const handleUpdateCategories = async (updatedCategories, migration) => {
+    return mutate(async () => {
+      if (migration) {
+        const next = migrateCategory(txRef.current, budgets, rulesRef.current, migration.from, migration.to);
+        await saveLedger(next.transactions, next.rules, user.email, { categories: updatedCategories, budgets: next.budgets });
+        setTransactions(next.transactions);
+        setRecurringRules(next.rules);
+        setBudgets(next.budgets);
+
+      }
+      if (!migration) {
+        const names = new Set(updatedCategories.map((category) => category.name));
+        const nextBudgets = budgets ? Object.fromEntries(Object.entries(budgets).filter(([name]) => names.has(name))) : null;
+        await saveLedger(txRef.current, rulesRef.current, user.email, { categories: updatedCategories, budgets: nextBudgets });
+        setBudgets(nextBudgets);
+      }
+      setCustomCategories(updatedCategories);
+    }, true);
   };
 
   const handleLogout = async () => {
-    await saveUser(null);
-    const defaultUser = { name: 'Siddharajsinh', email: 'siddharajsinh@example.com' };
-    setUser(defaultUser);
-    setTransactions([]);
-    setBudgets(null);
-    setWallets(DEFAULT_WALLETS);
-    setActiveWalletId('default_wallet');
-    setCustomCategories(defaultCategories);
-    setRecurringRules([]);
-    setCurrency('INR (₹)');
-    setNotifications(true);
-    setHistory([SCREENS.LOGIN]);
+    return mutate(async () => {
+      readyRef.current = false;
+      sessionRef.current += 1;
+      await saveUser(null);
+      const defaultUser = { name: 'Siddharajsinh', email: 'siddharajsinh@example.com' };
+      setUser(defaultUser);
+      setTransactions([]);
+      setBudgets(null);
+      setWallets(DEFAULT_WALLETS);
+      setActiveWalletId('default_wallet');
+      setCustomCategories(defaultCategories);
+      setRecurringRules([]);
+      setCurrency('INR (₹)');
+      setNotifications(true);
+      setHistory([SCREENS.LOGIN]);
+    }, false);
   };
 
   const handleDeleteAccount = async () => {
-    await deleteUserData(user.email);
-    await saveUser(null);
+    return mutate(async () => {
+      readyRef.current = false;
+      sessionRef.current += 1;
+      await deleteUserData(user.email);
+      await saveUser(null);
 
-    const defaultUser = { name: 'Siddharajsinh', email: 'siddharajsinh@example.com' };
-    setUser(defaultUser);
-    setTransactions([]);
-    setBudgets(null);
-    setWallets(DEFAULT_WALLETS);
-    setActiveWalletId('default_wallet');
-    setCustomCategories(defaultCategories);
-    setRecurringRules([]);
-    setCurrency('INR (₹)');
-    setNotifications(true);
-    setHistory([SCREENS.LOGIN]);
+      const defaultUser = { name: 'Siddharajsinh', email: 'siddharajsinh@example.com' };
+      setUser(defaultUser);
+      setTransactions([]);
+      setBudgets(null);
+      setWallets(DEFAULT_WALLETS);
+      setActiveWalletId('default_wallet');
+      setCustomCategories(defaultCategories);
+      setRecurringRules([]);
+      setCurrency('INR (₹)');
+      setNotifications(true);
+      setHistory([SCREENS.LOGIN]);
+    }, false);
   };
 
   const handleToggleDarkMode = () => {
@@ -318,65 +324,53 @@ export default function App() {
     });
   };
 
-  const handleAddTransaction = (transaction, recurringRule) => {
-    // If a recurring rule is present, processRecurringRules automatically generates the transaction(s) starting from fromDate.
-    // Therefore, txWithWallet is only included for non-recurring transactions to prevent duplicate entries on the start date.
-    const txWithWallet = (transaction && !recurringRule)
-      ? [
-          {
-            ...transaction,
-            walletId: transaction.walletId || activeWalletId || 'default_wallet',
-          },
-        ]
-      : [];
+  const persistEntry = async (transaction, rule, options = {}) => {
+    return mutate(async () => {
+      const next = applyTransactionSave(txRef.current, rulesRef.current, transaction, rule, options);
+      const processed = processRecurringRules(next.rules, next.transactions);
+      const nextTx = [...processed.newTransactions, ...next.transactions];
+      await saveLedger(nextTx, processed.updatedRules, user.email);
+      setTransactions(nextTx);
+      setRecurringRules(processed.updatedRules);
+      if (transaction) setSelectedTransaction(transaction);
+      popScreen();
+    }, true);
+  };
+  const handleAddTransaction = persistEntry;
 
-    setTransactions((currentTx) => {
-      let updatedRulesList = recurringRules;
-      let extraRecurringTx = [];
-
-      if (recurringRule) {
-        const newRules = [recurringRule, ...recurringRules];
-        const processed = processRecurringRules(newRules, currentTx);
-        extraRecurringTx = processed.newTransactions;
-        updatedRulesList = processed.updatedRules;
-        setRecurringRules(updatedRulesList);
-        saveRecurringRules(updatedRulesList, user.email);
-      }
-
-      const finalTxList = [...extraRecurringTx, ...txWithWallet, ...currentTx];
-      saveTransactions(finalTxList, user.email);
-      return finalTxList;
-    });
-
-    popScreen();
+  const handleToggleRecurringRule = async (ruleId) => {
+    return mutate(async () => {
+      const updated = rulesRef.current.map((rule) => rule.id === ruleId
+        ? { ...rule, isActive: rule.isActive === false,
+            ...(rule.isActive === false ? { lastProcessedDate: new Date().toISOString() } : {}) }
+        : rule);
+      try {
+        await saveLedger(txRef.current, updated, user.email);
+        setRecurringRules(updated);
+      } catch { Alert.alert('Could not save', 'Please try again.'); }
+    }, false);
   };
 
-  const handleToggleRecurringRule = (ruleId) => {
-    setRecurringRules((current) => {
-      const updated = current.map((rule) => (rule.id === ruleId ? { ...rule, isActive: rule.isActive === false } : rule));
-      saveRecurringRules(updated, user.email);
-      return updated;
-    });
+  const handleDeleteRecurringRule = async (ruleId) => {
+    return mutate(async () => {
+      const updated = rulesRef.current.filter((rule) => rule.id !== ruleId);
+      try {
+        await saveLedger(txRef.current, updated, user.email);
+        setRecurringRules(updated);
+      } catch { Alert.alert('Could not delete rule', 'Please try again.'); }
+    }, false);
   };
 
-  const handleDeleteRecurringRule = (ruleId) => {
-    setRecurringRules((current) => {
-      const updated = current.filter((rule) => rule.id !== ruleId);
-      saveRecurringRules(updated, user.email);
-      return updated;
-    });
-  };
-
-  const handleVoiceAdd = (transaction) => {
-    const txWithWallet = {
-      ...transaction,
-      walletId: transaction.walletId || activeWalletId || 'default_wallet',
-    };
-    setTransactions((current) => {
-      const updated = [txWithWallet, ...current];
-      saveTransactions(updated, user.email);
-      return updated;
-    });
+  const handleVoiceAdd = async (transaction) => {
+    return mutate(async () => {
+      const txWithWallet = {
+        ...transaction,
+        walletId: transaction.walletId || activeWalletId || 'default_wallet',
+      };
+      const updated = [txWithWallet, ...txRef.current];
+      await saveLedger(updated, rulesRef.current, user.email);
+      setTransactions(updated);
+    }, false);
   };
 
   // Wallet Handlers
@@ -422,109 +416,77 @@ export default function App() {
     });
   };
 
-  const handleDeleteWallet = (walletId) => {
-    const target = wallets.find((w) => w.id === walletId);
-    if (!target || target.isDefault || walletId === 'default_wallet') return;
-
-    const updatedWallets = wallets.filter((w) => w.id !== walletId);
-    setWallets(updatedWallets);
-    saveWallets(updatedWallets, user.email);
-
-    // Reassign deleted wallet's transactions to default wallet
-    setTransactions((prev) => {
-      const updatedTx = prev.map((tx) => (tx.walletId === walletId ? { ...tx, walletId: 'default_wallet' } : tx));
-      saveTransactions(updatedTx, user.email);
-      return updatedTx;
-    });
-
-    if (activeWalletId === walletId) {
-      setActiveWalletId('default_wallet');
-    }
+  const handleDeleteWallet = async (walletId) => {
+    return mutate(async () => {
+      const target = wallets.find((w) => w.id === walletId);
+      if (!target || target.isDefault || walletId === 'default_wallet') return;
+      const updatedWallets = wallets.filter((w) => w.id !== walletId);
+      if (!updatedWallets.length) throw new Error('Keep at least one wallet.');
+      const fallbackId = updatedWallets.find((wallet) => wallet.isDefault)?.id || updatedWallets[0].id;
+      const nextRules = rulesRef.current.map((rule) => rule.walletId === walletId ? { ...rule, walletId: fallbackId } : rule);
+      const nextTx = txRef.current.map((tx) => tx.walletId === walletId ? { ...tx, walletId: fallbackId } : tx);
+      await saveLedger(nextTx, nextRules, user.email, { wallets: updatedWallets });
+      setWallets(updatedWallets);
+      setTransactions(nextTx);
+      setRecurringRules(nextRules);
+      if (activeWalletId === walletId) setActiveWalletId(fallbackId);
+    }, false);
   };
 
-  const handleEditTransaction = (updatedTransaction, recurringRule) => {
-    if (recurringRule) {
-      setRecurringRules((currentRules) => {
-        const exists = currentRules.some((r) => r.id === recurringRule.id);
-        const updatedRules = exists
-          ? currentRules.map((r) => (r.id === recurringRule.id ? { ...r, ...recurringRule } : r))
-          : [recurringRule, ...currentRules];
-        saveRecurringRules(updatedRules, user.email);
+  const handleEditTransaction = persistEntry;
 
-        // Re-process recurring rules to generate/update transactions
-        setTransactions((currentTx) => {
-          const processed = processRecurringRules(updatedRules, currentTx);
-          const finalTxList = processed.newTransactions.length > 0
-            ? [...processed.newTransactions, ...currentTx]
-            : currentTx;
-          saveTransactions(finalTxList, user.email);
-          return finalTxList;
-        });
+  const handleDeleteTransaction = async (transactionId) => {
+    return mutate(async () => {
+      const updated = txRef.current.filter((item) => item.id !== transactionId);
+      await saveLedger(updated, rulesRef.current, user.email);
+      setTransactions(updated);
+      setSelectedTransaction(null);
+      popScreen();
+    }, false);
+  };
 
-        return updatedRules;
+  const handleSaveBudgets = async (updatedBudgets) => {
+    return mutate(async () => {
+      await saveLedger(txRef.current, rulesRef.current, user.email, { budgets: updatedBudgets });
+      setBudgets(updatedBudgets);
+      popScreen();
+    }, true);
+  };
+
+  const handleImportTransactions = async (importedList) => {
+    return mutate(async () => {
+      const ids = new Set(txRef.current.map((item) => item.id));
+      const unique = importedList.filter((item) => {
+        if (ids.has(item.id)) return false;
+        ids.add(item.id);
+        return true;
       });
-    }
-
-    if (updatedTransaction && updatedTransaction.id) {
-      setTransactions((current) => {
-        const exists = current.some((item) => item.id === updatedTransaction.id);
-        let updated;
-        if (exists) {
-          updated = current.map((item) => (item.id === updatedTransaction.id ? updatedTransaction : item));
-        } else if (!recurringRule) {
-          updated = [updatedTransaction, ...current];
-        } else {
-          updated = current;
+      const next = [...unique, ...txRef.current];
+      const nextCategories = [...customCategories];
+      unique.forEach((tx) => {
+        if (!nextCategories.some((cat) => cat.name === tx.category && cat.type === tx.type)) {
+          nextCategories.push({ name: tx.category, type: tx.type, icon: 'other', color: '#64748B', isCustom: true, isActive: true });
         }
-        saveTransactions(updated, user.email);
-        return updated;
       });
-      setSelectedTransaction(updatedTransaction);
-    }
-    popScreen();
-  };
-
-  const handleDeleteTransaction = (transactionId) => {
-    setTransactions((current) => {
-      const updated = current.filter((item) => item.id !== transactionId);
-      saveTransactions(updated, user.email);
-      return updated;
-    });
-    setSelectedTransaction(null);
-    popScreen();
-  };
-
-  const handleSaveBudgets = (updatedBudgets) => {
-    setBudgets(updatedBudgets);
-    saveBudgets(updatedBudgets, user.email);
-    popScreen();
-  };
-
-  const handleImportTransactions = (importedList) => {
-    setTransactions((current) => {
-      const existingIds = new Set(current.map((item) => item.id));
-      const uniqueImported = importedList.filter((item) => !existingIds.has(item.id));
-      const updated = [...uniqueImported, ...current];
-      saveTransactions(updated, user.email);
-      return updated;
-    });
+      await saveLedger(next, rulesRef.current, user.email, { categories: nextCategories });
+      setTransactions(next);
+      setCustomCategories(nextCategories);
+      return { imported: unique.length, duplicates: importedList.length - unique.length };
+    }, true);
   };
 
   const handleResetAllData = async () => {
-    setTransactions([]);
-    setBudgets(null);
-    setWallets(DEFAULT_WALLETS);
-    setActiveWalletId('default_wallet');
-    setCustomCategories(defaultCategories);
-    setRecurringRules([]);
-    await Promise.all([
-      saveTransactions([], user.email),
-      saveBudgets(null, user.email),
-      saveWallets(DEFAULT_WALLETS, user.email),
-      saveCategories(defaultCategories, user.email),
-      saveRecurringRules([], user.email),
-    ]);
-    setHistory([SCREENS.HOME]);
+    return mutate(async () => {
+      await saveLedger([], [], user.email, { budgets: null, wallets: DEFAULT_WALLETS, categories: defaultCategories });
+      setTransactions([]);
+      setBudgets(null);
+      setWallets(DEFAULT_WALLETS);
+      setActiveWalletId('default_wallet');
+      setCustomCategories(defaultCategories);
+      setRecurringRules([]);
+      setSelectedTransaction(null);
+      setHistory([SCREENS.HOME]);
+    }, false);
   };
 
   const openTransaction = (transaction) => {
@@ -615,6 +577,7 @@ export default function App() {
         return (
           <ProfileScreen
             user={user}
+            categories={customCategories}
             transactions={transactions}
             budgets={budgets}
             currency={currency}
@@ -653,6 +616,8 @@ export default function App() {
         return (
           <ManageCategoriesScreen
             customCategories={customCategories}
+            transactions={transactions}
+            recurringRules={recurringRules}
             darkMode={darkMode}
             onBack={popScreen}
             onUpdateCategories={handleUpdateCategories}
@@ -737,7 +702,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={[styles.screen, (currentScreen === SCREENS.SPLASH || currentScreen === SCREENS.LOGIN || darkMode) && styles.splashScreen]}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={[styles.screen, (currentScreen === SCREENS.SPLASH || currentScreen === SCREENS.LOGIN || darkMode) && styles.splashScreen]}>
         <StatusBar style={currentScreen === SCREENS.SPLASH || (currentScreen === SCREENS.LOGIN && darkMode) || darkMode ? 'light' : 'dark'} />
         {renderScreen()}
       </SafeAreaView>

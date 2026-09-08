@@ -234,7 +234,7 @@ export function ReportsScreen({ transactions = [], customCategories = defaultCat
                   </View>
                   <View style={styles.transactionRowText}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={[styles.transactionRowTitle, darkMode && { color: '#FFF' }]}>{transaction.category}</Text>
+                      <Text numberOfLines={2} style={[styles.transactionRowTitle, { flexShrink: 1 }, darkMode && { color: '#FFF' }]}>{transaction.category}</Text>
                       {transaction.isRecurring ? (
                         <View style={{ backgroundColor: 'rgba(16,185,129,0.2)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 6 }}>
                           <Text style={{ fontSize: 10, color: '#10B981', fontWeight: '800' }}>🔄</Text>

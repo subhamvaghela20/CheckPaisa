@@ -7,6 +7,17 @@ const CURRENCY_KEY = '@checkpaisa_currency';
 const NOTIFICATIONS_KEY = '@checkpaisa_notifications';
 const REGISTERED_USERS_KEY = '@checkpaisa_registered_users';
 
+let ledgerWrites = Promise.resolve();
+export function saveLedger(transactions, rules, email, related = {}) {
+  const pairs = [[getTxKey(email), JSON.stringify(transactions)], [getRecurringRulesKey(email), JSON.stringify(rules)]];
+  if (related.categories) pairs.push([getCategoriesKey(email), JSON.stringify(related.categories)]);
+  if (related.budgets !== undefined) pairs.push([getBudgetKey(email), JSON.stringify(related.budgets)]);
+  if (related.wallets) pairs.push([getWalletKey(email), JSON.stringify(related.wallets)]);
+  const write = ledgerWrites.catch(() => {}).then(() => AsyncStorage.multiSet(pairs));
+  ledgerWrites = write;
+  return write;
+}
+
 const DEFAULT_REGISTERED_USERS = [
   { name: 'Siddharajsinh', email: 'siddharajsinh@example.com', password: '1234' },
   { name: 'User', email: 'user@example.com', password: '1234' },
@@ -76,7 +87,8 @@ export async function loadTransactions(email) {
   try {
     const key = getTxKey(email);
     const jsonValue = await AsyncStorage.getItem(key);
-    return jsonValue != null ? JSON.parse(jsonValue) : [];
+    const parsed = jsonValue != null ? JSON.parse(jsonValue) : [];
+    return Array.isArray(parsed) ? parsed.filter((tx) => tx && Number.isFinite(Number(tx.amount)) && Number(tx.amount) > 0 && Number.isFinite(new Date(tx.createdAt).getTime())).map((tx) => ({ ...tx, amount: Number(tx.amount) })) : [];
   } catch (e) {
     console.error('Failed to load transactions from storage:', e);
     return [];
@@ -87,7 +99,9 @@ export async function saveTransactions(transactions, email) {
   try {
     const key = getTxKey(email);
     const jsonValue = JSON.stringify(transactions);
-    await AsyncStorage.setItem(key, jsonValue);
+    const write = ledgerWrites.catch(() => {}).then(() => AsyncStorage.setItem(key, jsonValue));
+    ledgerWrites = write;
+    await write;
   } catch (e) {
     console.error('Failed to save transactions to storage:', e);
   }
@@ -175,7 +189,7 @@ export async function loadRegisteredUsers() {
     const jsonValue = await AsyncStorage.getItem(REGISTERED_USERS_KEY);
     if (jsonValue != null) {
       const parsed = JSON.parse(jsonValue);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
     // Return default pre-seeded accounts out-of-the-box
     await AsyncStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify(DEFAULT_REGISTERED_USERS));
@@ -197,6 +211,7 @@ export async function saveRegisteredUsers(users) {
 
 export async function deleteUserData(email) {
   try {
+    await ledgerWrites.catch(() => {});
     const txKey = getTxKey(email);
     const budgetKey = getBudgetKey(email);
     const walletKey = getWalletKey(email);
@@ -204,6 +219,7 @@ export async function deleteUserData(email) {
       txKey,
       budgetKey,
       walletKey,
+      getRecurringRulesKey(email),
       getCategoriesKey(email),
       getSetupKey(email),
       getPreferenceKey(CURRENCY_KEY, email),
@@ -228,7 +244,9 @@ export async function updateUserProfile(oldEmail, updatedUser) {
     if (conflictingUser) return { success: false, error: 'An account already uses this email address.' };
 
     if (previousEmail !== nextEmail) {
+      await ledgerWrites.catch(() => {});
       const keyPairs = [
+        [getRecurringRulesKey(oldEmail), getRecurringRulesKey(updatedUser.email)],
         [getTxKey(oldEmail), getTxKey(updatedUser.email)],
         [getBudgetKey(oldEmail), getBudgetKey(updatedUser.email)],
         [getWalletKey(oldEmail), getWalletKey(updatedUser.email)],
@@ -241,7 +259,7 @@ export async function updateUserProfile(oldEmail, updatedUser) {
         const value = await AsyncStorage.getItem(oldKey);
         if (value != null) await AsyncStorage.setItem(newKey, value);
       }
-      await AsyncStorage.multiRemove(keyPairs.map(([oldKey]) => oldKey));
+      await AsyncStorage.multiRemove(keyPairs.filter(([oldKey, newKey]) => oldKey !== newKey).map(([oldKey]) => oldKey));
     }
 
     const updatedUsers = users.map((item) => item.email.toLowerCase() === previousEmail
@@ -335,7 +353,8 @@ export async function loadRecurringRules(email) {
   try {
     const key = getRecurringRulesKey(email);
     const value = await AsyncStorage.getItem(key);
-    return value != null ? JSON.parse(value) : [];
+    const parsed = value != null ? JSON.parse(value) : [];
+    return Array.isArray(parsed) ? parsed.filter((rule) => rule && typeof rule.id === 'string') : [];
   } catch (e) {
     console.error('Failed to load recurring rules:', e);
     return [];
@@ -345,7 +364,10 @@ export async function loadRecurringRules(email) {
 export async function saveRecurringRules(rules, email) {
   try {
     const key = getRecurringRulesKey(email);
-    await AsyncStorage.setItem(key, JSON.stringify(rules || []));
+    const value = JSON.stringify(rules || []);
+    const write = ledgerWrites.catch(() => {}).then(() => AsyncStorage.setItem(key, value));
+    ledgerWrites = write;
+    await write;
   } catch (e) {
     console.error('Failed to save recurring rules:', e);
   }

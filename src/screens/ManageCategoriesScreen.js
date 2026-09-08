@@ -7,7 +7,7 @@ import { green, styles } from '../styles/styles';
 const AVAILABLE_ICONS = ['food', 'transport', 'bills', 'shopping', 'health', 'groceries', 'rent', 'education', 'entertainment', 'other', 'salary', 'bonus', 'freelance', 'investment', 'cashback'];
 const AVAILABLE_COLORS = ['#EF4444', '#3B82F6', '#F59E0B', '#F97316', '#EC4899', '#10B981', '#8B5CF6', '#6366F1', '#14B8A6', '#059669', '#84CC16', '#06B6D4', '#64748B'];
 
-export function ManageCategoriesScreen({ customCategories, darkMode = false, onBack, onUpdateCategories }) {
+export function ManageCategoriesScreen({ customCategories, transactions = [], recurringRules = [], darkMode = false, onBack, onUpdateCategories }) {
   const [activeType, setActiveType] = useState('Expense');
   const [newCatName, setNewCatName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('food');
@@ -25,7 +25,12 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
   const allCategories = customCategories && customCategories.length > 0 ? customCategories : defaultCategories;
   const filteredCategories = allCategories.filter((c) => c.type === activeType);
 
-  const handleAddCategory = () => {
+  const persistCategories = async (updated, migration) => {
+    try { await onUpdateCategories(updated, migration); return true; }
+    catch { Alert.alert('Could not save category', 'Please free device storage and try again.'); return false; }
+  };
+
+  const handleAddCategory = async () => {
     const trimmed = newCatName.trim();
     if (!trimmed) {
       return Alert.alert('Invalid Name', 'Please enter a category name.');
@@ -44,7 +49,7 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
     };
 
     const updated = [...allCategories, newCategoryObj];
-    onUpdateCategories(updated);
+    if (!(await persistCategories(updated))) return;
     setNewCatName('');
     setShowAddForm(false);
   };
@@ -56,7 +61,7 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
       }
       return c;
     });
-    onUpdateCategories(updated);
+    persistCategories(updated);
   };
 
   const handleStartEdit = (cat) => {
@@ -66,7 +71,7 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
     setEditColor(cat.color || '#EF4444');
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     const trimmed = editName.trim();
     if (!trimmed) {
       return Alert.alert('Invalid Name', 'Please enter a category name.');
@@ -89,19 +94,25 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
       return c;
     });
 
-    onUpdateCategories(updated);
-    setEditingCategory(null);
+    try {
+      await onUpdateCategories(updated, { from: editingCategory.name, to: trimmed });
+      setEditingCategory(null);
+    } catch { Alert.alert('Could not save category', 'Please try again.'); }
   };
 
   const handleRemoveCategory = (catName) => {
-    Alert.alert('Remove Category', `Are you sure you want to remove "${catName}"?`, [
+    if (transactions.some((tx) => tx.category === catName) || recurringRules.some((rule) => rule.category === catName)) {
+      Alert.alert('Category is in use', 'Deactivate this category to hide it from new entries. Existing transactions and schedules keep their category.');
+      return;
+    }
+    Alert.alert('Remove Category', `Remove "${catName}" and its budget limit?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',
         style: 'destructive',
         onPress: () => {
           const updated = allCategories.filter((c) => c.name !== catName);
-          onUpdateCategories(updated);
+          persistCategories(updated);
         },
       },
     ]);
@@ -192,13 +203,13 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
             {filteredCategories.map((cat) => {
               const isActive = cat.isActive !== false;
               return (
-                <View key={cat.name} style={[styles.editBudgetRow, darkMode && { borderBottomColor: 'rgba(255,255,255,0.08)' }, !isActive && { opacity: 0.6 }]}>
+                <View key={cat.name} style={[styles.editBudgetRow, { flexWrap: 'wrap', gap: 8 }, darkMode && { borderBottomColor: 'rgba(255,255,255,0.08)' }, !isActive && { opacity: 0.6 }]}>
                   <View style={[styles.transactionCategoryIcon, { backgroundColor: `${cat.color || '#10B981'}18` }]}>
                     <AppIcon name={cat.icon || 'other'} color={cat.color || green} size={21} />
                   </View>
                   
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={[styles.editBudgetCatName, darkMode && { color: '#FFF' }, !isActive && { textDecorationLine: 'line-through', color: '#94A3B8' }]}>
+                  <View style={{ flex: 1, minWidth: 130 }}>
+                    <Text style={[styles.editBudgetCatName, { flex: 0, marginLeft: 0 }, darkMode && { color: '#FFF' }, !isActive && { textDecorationLine: 'line-through', color: '#94A3B8' }]}>
                       {cat.name}
                     </Text>
                     <Text style={{ fontSize: 11, color: isActive ? green : '#EF4444', fontWeight: '700', marginTop: 2 }}>
@@ -206,10 +217,11 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
                     </Text>
                   </View>
 
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, width: '100%' }}>
                     {/* Active Toggle Switch */}
                     <Switch
                       value={isActive}
+                      accessibilityLabel={`Activate ${cat.name}`}
                       onValueChange={(val) => handleToggleActive(cat.name, val)}
                       trackColor={{ false: '#CBD5E1', true: green }}
                       thumbColor="#FFFFFF"
@@ -231,7 +243,7 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
                         onPress={() => handleRemoveCategory(cat.name)}
                         accessibilityLabel={`Delete ${cat.name}`}
                       >
-                        <AppIcon name="other" color="#EF4444" size={16} />
+                      <AppIcon name="delete" color="#EF4444" size={16} />
                       </Pressable>
                     )}
                   </View>
@@ -244,7 +256,8 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
         {/* Modal for Editing Existing Category */}
         <Modal visible={Boolean(editingCategory)} transparent animationType="fade" onRequestClose={() => setEditingCategory(null)}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalCenterBackdrop}>
-            <View style={[styles.currencyModalCard, darkMode && styles.darkEditProfileModalCard, { width: '90%' }]}>
+            <ScrollView style={{ maxHeight: '100%', width: '100%' }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
+            <View style={[styles.currencyModalCard, darkMode && styles.darkEditProfileModalCard, { width: '100%' }]}>
               <Text style={[styles.currencyModalTitle, darkMode && { color: '#FFF' }]}>Edit Category</Text>
 
               <Text style={[styles.addCatPickerLabel, darkMode && { color: '#A7F3D0' }]}>Category Name</Text>
@@ -289,6 +302,7 @@ export function ManageCategoriesScreen({ customCategories, darkMode = false, onB
                 </Pressable>
               </View>
             </View>
+            </ScrollView>
           </KeyboardAvoidingView>
         </Modal>
       </View>

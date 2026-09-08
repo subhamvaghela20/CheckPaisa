@@ -1,131 +1,78 @@
-/**
- * Utility to process active recurring rules and auto-generate transactions
- * strictly bounded between start date (fromDate) and end date (toDate).
- * Supports Day-of-Week selection for Weekly rules and Day-of-Month selection for Monthly rules.
- */
+export function localDay(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
 
-export function processRecurringRules(rules = [], existingTransactions = []) {
-  if (!Array.isArray(rules) || rules.length === 0) {
-    return { newTransactions: [], updatedRules: rules };
-  }
+function dayKey(date) {
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
 
-  const now = new Date();
+export function ruleStatus(rule, now = new Date()) {
+  if (!rule || !localDay(rule.fromDate) || !localDay(rule.toDate)) return 'Invalid';
+  if (localDay(rule.toDate) < localDay(now)) return 'Completed';
+  if (rule.isActive === false) return 'Paused';
+  return localDay(rule.fromDate) > localDay(now) ? 'Scheduled' : 'Active';
+}
+
+// Bounded work per pass keeps historical catch-up from blocking the UI.
+export function processRecurringRules(rules = [], existingTransactions = [], now = new Date(), limit = 200) {
+  if (!Array.isArray(rules)) return { newTransactions: [], updatedRules: [], hasMore: false };
   const newTransactions = [];
-  const existingIdSet = new Set(existingTransactions.map((t) => t.id));
-
+  const seen = new Set();
+  for (const tx of existingTransactions || []) {
+    const date = localDay(tx.createdAt);
+    if (date && tx.recurringRuleId) seen.add(`${tx.recurringRuleId}:${dayKey(date)}`);
+  }
+  let hasMore = false;
+  const today = localDay(now);
   const updatedRules = rules.map((rule) => {
-    if (rule.isActive === false) return rule;
-
-    const fromDate = new Date(rule.fromDate);
-    const toDate = new Date(rule.toDate);
-
-    // Normalize fromDate to start of day (00:00:00.000)
-    const startBound = new Date(fromDate);
-    startBound.setHours(0, 0, 0, 0);
-
-    // Normalize toDate to end of day (23:59:59.999)
-    const endBound = new Date(toDate);
-    endBound.setHours(23, 59, 59, 999);
-
-    // If start date is strictly in the future relative to current time, don't generate entries yet
-    if (startBound > now) return rule;
-
-    // Upper limit date for entry generation (must NOT exceed endBound or current time)
-    const effectiveEnd = now < endBound ? now : endBound;
-
-    let lastProcessed = rule.lastProcessedDate ? new Date(rule.lastProcessedDate) : null;
-
-    const addTx = (date) => {
-      const txId = `rec_${rule.id}_${date.getTime()}`;
-      if (!existingIdSet.has(txId)) {
-        newTransactions.push({
-          id: txId,
-          type: rule.type || 'Expense',
-          amount: Number(rule.amount) || 0,
-          category: rule.category || 'Other',
-          walletId: rule.walletId || 'default_wallet',
-          note: rule.note ? `${rule.note} (Recurring)` : 'Recurring Entry',
-          createdAt: new Date(date).toISOString(),
-          isRecurring: true,
-          recurringRuleId: rule.id,
-        });
-        existingIdSet.add(txId);
-      }
-    };
-
-    if (rule.frequency === 'Daily') {
-      let pointerDate = lastProcessed ? new Date(lastProcessed) : new Date(startBound);
-      if (!lastProcessed && pointerDate <= effectiveEnd && pointerDate <= endBound) {
-        addTx(pointerDate);
-        lastProcessed = new Date(pointerDate);
-      }
-
-      while (true) {
-        const nextDate = new Date(pointerDate);
-        nextDate.setDate(nextDate.getDate() + 1);
-        if (nextDate > effectiveEnd || nextDate > endBound) break;
-        pointerDate = nextDate;
-        addTx(pointerDate);
-        lastProcessed = new Date(pointerDate);
-      }
-    } else if (rule.frequency === 'Weekly') {
-      const targetDayOfWeek = rule.repeatDayOfWeek !== undefined ? Number(rule.repeatDayOfWeek) : fromDate.getDay();
-      let pointerDate;
-
-      if (lastProcessed) {
-        pointerDate = new Date(lastProcessed);
-      } else {
-        pointerDate = new Date(startBound);
-        while (pointerDate.getDay() !== targetDayOfWeek && pointerDate <= endBound) {
-          pointerDate.setDate(pointerDate.getDate() + 1);
-        }
-      }
-
-      if (!lastProcessed && pointerDate >= startBound && pointerDate <= effectiveEnd && pointerDate <= endBound) {
-        addTx(pointerDate);
-        lastProcessed = new Date(pointerDate);
-      }
-
-      while (true) {
-        const nextDate = new Date(pointerDate);
-        nextDate.setDate(nextDate.getDate() + 7);
-        if (nextDate > effectiveEnd || nextDate > endBound) break;
-        pointerDate = nextDate;
-        addTx(pointerDate);
-        lastProcessed = new Date(pointerDate);
-      }
-    } else {
-      // Default: Monthly frequency
-      const targetDayOfMonth = rule.repeatDayOfMonth !== undefined ? Number(rule.repeatDayOfMonth) : fromDate.getDate();
-      let monthCursor = new Date(startBound.getFullYear(), startBound.getMonth(), 1);
-      const endMonthCursor = new Date(endBound.getFullYear(), endBound.getMonth(), 1);
-
-      while (monthCursor <= endMonthCursor) {
-        const year = monthCursor.getFullYear();
-        const month = monthCursor.getMonth();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const day = Math.min(targetDayOfMonth, daysInMonth);
-        const targetDate = new Date(year, month, day, 0, 0, 0, 0);
-
-        if (
-          targetDate >= startBound &&
-          targetDate <= effectiveEnd &&
-          targetDate <= endBound &&
-          (!lastProcessed || targetDate > lastProcessed)
-        ) {
-          addTx(targetDate);
-          lastProcessed = new Date(targetDate);
-        }
-
-        monthCursor.setMonth(monthCursor.getMonth() + 1);
-      }
+    if (!rule || rule.isActive === false) return rule;
+    const start = localDay(rule.fromDate);
+    const end = localDay(rule.toDate);
+    const amount = Number(rule.amount);
+    if (!start || !end || !today || start > end || start > today || !Number.isFinite(amount) || amount <= 0 ||
+        !['Daily', 'Weekly', 'Monthly'].includes(rule.frequency)) return rule;
+    const upper = end < today ? end : today;
+    const last = localDay(rule.lastProcessedDate);
+    let pointer = new Date(start);
+    if (last && last >= pointer) {
+      pointer = new Date(last);
+      pointer.setDate(pointer.getDate() + 1);
     }
-
-    return {
-      ...rule,
-      lastProcessedDate: lastProcessed ? lastProcessed.toISOString() : rule.lastProcessedDate,
+    const weekDay = Number(rule.repeatDayOfWeek ?? start.getDay());
+    const monthDay = Number(rule.repeatDayOfMonth ?? start.getDate());
+    if (rule.frequency === 'Weekly' && (!Number.isInteger(weekDay) || weekDay < 0 || weekDay > 6)) return rule;
+    if (rule.frequency === 'Monthly' && (!Number.isInteger(monthDay) || monthDay < 1 || monthDay > 31)) return rule;
+    const align = () => {
+      if (rule.frequency === 'Weekly') pointer.setDate(pointer.getDate() + (weekDay - pointer.getDay() + 7) % 7);
+      if (rule.frequency === 'Monthly') {
+        let target = new Date(pointer.getFullYear(), pointer.getMonth(), Math.min(monthDay, new Date(pointer.getFullYear(), pointer.getMonth() + 1, 0).getDate()));
+        if (target < pointer) target = new Date(pointer.getFullYear(), pointer.getMonth() + 1, Math.min(monthDay, new Date(pointer.getFullYear(), pointer.getMonth() + 2, 0).getDate()));
+        pointer = target;
+      }
     };
+    align();
+    let processed = last;
+    let visits = 0;
+    while (pointer <= upper) {
+      if (newTransactions.length >= limit || visits >= limit) { hasMore = true; break; }
+      visits += 1;
+      const key = `${rule.id}:${dayKey(pointer)}`;
+      if (!seen.has(key)) {
+        newTransactions.push({
+          id: `rec_${rule.id}_${dayKey(pointer)}`, type: rule.type === 'Income' ? 'Income' : 'Expense',
+          amount, category: rule.category, walletId: rule.walletId || 'default_wallet',
+          note: rule.note || '', createdAt: pointer.toISOString(), isRecurring: true, recurringRuleId: rule.id,
+        });
+        seen.add(key);
+      }
+      processed = new Date(pointer);
+      pointer.setDate(pointer.getDate() + 1);
+      align();
+    }
+    return processed ? { ...rule, lastProcessedDate: processed.toISOString() } : rule;
   });
-
-  return { newTransactions, updatedRules };
+  return { newTransactions, updatedRules, hasMore };
 }

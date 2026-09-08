@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
+import { exportTransactionsExcel, importTransactionsExcel, EXCEL_MIME, MAX_EXCEL_BYTES } from '../utils/excel';
+import { ruleStatus } from '../utils/recurringProcessor';
 import { AppIcon } from '../components/AppIcon';
 import { CustomAlertModal } from '../components/CustomAlertModal';
 import { green, styles } from '../styles/styles';
@@ -18,6 +21,7 @@ const CURRENCIES = [
 export function ProfileScreen({
   user,
   transactions = [],
+  categories = [],
   budgets = null,
   currency = 'INR (₹)',
   onSelectCurrency,
@@ -44,7 +48,8 @@ export function ProfileScreen({
 }) {
   const [activeTab, setActiveTab] = useState('Profile');
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
+  const [fileBusy, setFileBusy] = useState(false);
+  const fileBusyRef = useRef(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showAddWalletModal, setShowAddWalletModal] = useState(false);
@@ -62,7 +67,7 @@ export function ProfileScreen({
 
   const [editName, setEditName] = useState(userName);
   const [editEmail, setEditEmail] = useState(userEmail);
-  const [importText, setImportText] = useState('');
+
 
   // Reusable Rounded Custom Alert Modal state
   const [alertModal, setAlertModal] = useState({
@@ -121,85 +126,42 @@ export function ProfileScreen({
     setShowEditProfileModal(false);
   };
 
-  const escapeCsvValue = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-
-  const parseCsvLine = (line) => {
-    const values = [];
-    let value = '';
-    let quoted = false;
-    for (let i = 0; i < line.length; i += 1) {
-      const char = line[i];
-      if (char === '"') {
-        if (quoted && line[i + 1] === '"') { value += '"'; i += 1; } else quoted = !quoted;
-      } else if (char === ',' && !quoted) {
-        values.push(value.trim());
-        value = '';
-      } else value += char;
-    }
-    values.push(value.trim());
-    return values;
+  const handleExportExcel = async () => {
+    if (fileBusyRef.current) return;
+    if (!transactions.length) return showAlert({ title: 'No Data to Export', message: 'There are no transactions to export.' });
+    fileBusyRef.current = true;
+    setFileBusy(true);
+    try {
+      if (!(await Sharing.isAvailableAsync())) throw new Error('File sharing is unavailable on this device.');
+      const content = exportTransactionsExcel(transactions);
+      const fileUri = `${FileSystem.cacheDirectory}checkpaisa-transactions-${Date.now()}.xlsx`;
+      await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.Base64 });
+      await Sharing.shareAsync(fileUri, { mimeType: EXCEL_MIME, UTI: 'org.openxmlformats.spreadsheetml.sheet', dialogTitle: 'Save or share Excel workbook' });
+    } catch (error) {
+      showAlert({ title: 'Export Error', message: error.message || 'Could not export the Excel workbook.' });
+    } finally { fileBusyRef.current = false; setFileBusy(false); }
   };
 
-  const handleExportCSV = async () => {
-    if (transactions.length === 0) {
-      return showAlert({ title: 'No Data to Export', message: 'There are no transaction records available to export.', icon: '📄' });
-    }
-
-    const csvContent = `ID,Type,Category,Amount,Date,Notes,Wallet ID\n${transactions.map((t) => [
-      t.id, t.type, t.category, t.amount, t.createdAt, t.note || '', t.walletId || '',
-    ].map(escapeCsvValue).join(',')).join('\n')}\n`;
+  const handleImportExcel = async () => {
+    if (fileBusyRef.current) return;
+    fileBusyRef.current = true;
+    setFileBusy(true);
     try {
-      const fileUri = `${FileSystem.cacheDirectory}checkpaisa-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
-      await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, { mimeType: 'text/csv', dialogTitle: 'Export CheckPaisa transactions' });
-      }
-      return showAlert({ title: 'Export Ready', message: `${transactions.length} transaction record(s) were exported as a CSV file.` });
-    } catch (e) {
-      return showAlert({ title: 'Export Error', message: 'Could not create the CSV file. Please try again.' });
-    }
-  };
-
-  const handleProcessImport = () => {
-    if (!importText.trim()) {
-      return showAlert({ title: 'Empty Input', message: 'Please paste valid CSV data lines to import.', icon: '⚠️' });
-    }
-
-    try {
-      const lines = importText.trim().split('\n');
-      const importedList = [];
-
-      lines.forEach((line, index) => {
-        if (index === 0 && line.toLowerCase().includes('type')) return;
-        const parts = parseCsvLine(line);
-        if (parts.length >= 5) {
-          const [id, type, category, amountStr, createdAt, note, walletId] = parts;
-          const numAmount = Number(amountStr);
-          if (numAmount > 0 && (type === 'Expense' || type === 'Income')) {
-            importedList.push({
-              id: id || String(Date.now() + index),
-              type,
-              category: category || 'Other',
-              amount: numAmount,
-              createdAt: createdAt && !Number.isNaN(new Date(createdAt).getTime()) ? createdAt : new Date().toISOString(),
-              note: note || '',
-              walletId: walletId || activeWalletId || 'default_wallet',
-            });
-          }
-        }
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [EXCEL_MIME, 'application/vnd.ms-excel'], copyToCacheDirectory: true, multiple: false,
       });
-
-      if (importedList.length === 0) {
-        return showAlert({ title: 'Import Failed', message: 'No valid transaction records were found in the pasted CSV text.', icon: '⚠️' });
-      }
-
-      onImportTransactions?.(importedList);
-      setShowImportModal(false);
-      setImportText('');
-      showAlert({ title: 'Import Complete', message: `Successfully imported ${importedList.length} transaction(s).`, icon: '✅' });
-    } catch (e) {
-      showAlert({ title: 'Import Error', message: 'Failed to parse CSV text. Please verify formatting and try again.', icon: '⚠️' });
-    }
+      if (result.canceled) return;
+      const file = result.assets?.[0];
+      if (!file || !/\.(xlsx|xls)$/i.test(file.name)) throw new Error('Select an Excel file (.xlsx or .xls).');
+      const info = await FileSystem.getInfoAsync(file.uri);
+      if (!info.exists || (file.size || info.size || 0) > MAX_EXCEL_BYTES) throw new Error('Choose an accessible Excel file smaller than 5 MB.');
+      const content = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const parsed = importTransactionsExcel(content, { wallets, activeWalletId, rules: recurringRules, categories });
+      const summary = await onImportTransactions(parsed.transactions);
+      showAlert({ title: 'Import Complete', message: `${summary.imported} transaction(s) imported. ${summary.duplicates} duplicate(s) skipped.${parsed.reassignedWallets ? ' Unknown wallets were assigned to your selected wallet.' : ''} Recurring schedules are not created by import.`, icon: '✅' });
+    } catch (error) {
+      showAlert({ title: 'Import Error', message: error.message || 'Could not import the Excel workbook.' });
+    } finally { fileBusyRef.current = false; setFileBusy(false); }
   };
 
   const handleConfirmLogout = () => {
@@ -235,7 +197,7 @@ export function ProfileScreen({
   const handleConfirmReset = () => {
     showAlert({
       title: 'Reset All Data',
-      message: 'This will permanently erase all transactions, custom categories, and budgets. Are you sure?',
+      message: 'This will permanently erase all transactions, recurring schedules, wallets, custom categories, and budgets. Are you sure?',
       icon: '🗑️',
       confirmText: 'Reset Data',
       cancelText: 'Cancel',
@@ -355,7 +317,7 @@ export function ProfileScreen({
               </View>
               <Text style={rowLabelStyle}>Recurring Rules</Text>
               <View style={styles.profileRowRight}>
-                <Text style={styles.profileRowValue}>{recurringRules.length} Rules</Text>
+                <Text style={styles.profileRowValue}>{recurringRules.filter((rule) => ['Active', 'Scheduled'].includes(ruleStatus(rule))).length} Active / {recurringRules.length}</Text>
                 <Text style={styles.profileRowChevron}>›</Text>
               </View>
             </Pressable>
@@ -367,22 +329,22 @@ export function ProfileScreen({
           <Text style={sectionHeadingStyle}>DATA MANAGEMENT & ACCOUNT</Text>
           <View style={cardStyle}>
             {/* Export Data */}
-            <Pressable style={styles.profileRowItem} onPress={handleExportCSV}>
+            <Pressable style={styles.profileRowItem} disabled={fileBusy} onPress={handleExportExcel}>
               <View style={[styles.profileRowIconTile, { backgroundColor: darkMode ? 'rgba(37,99,235,0.2)' : '#EFF6FF' }]}>
                 <AppIcon name="report" color="#2563EB" size={18} />
               </View>
-              <Text style={rowLabelStyle}>Export Expenses (Excel / CSV)</Text>
+              <Text style={rowLabelStyle}>Export Transactions (.xlsx)</Text>
               <Text style={styles.profileRowChevron}>›</Text>
             </Pressable>
 
             <View style={[styles.profileDivider, darkMode && { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
 
             {/* Import Data */}
-            <Pressable style={styles.profileRowItem} onPress={() => setShowImportModal(true)}>
+            <Pressable style={styles.profileRowItem} disabled={fileBusy} onPress={handleImportExcel}>
               <View style={[styles.profileRowIconTile, { backgroundColor: darkMode ? 'rgba(22,163,74,0.2)' : '#F0FDF4' }]}>
                 <AppIcon name="plus" color="#16A34A" size={18} />
               </View>
-              <Text style={rowLabelStyle}>Import Expenses</Text>
+              <Text style={rowLabelStyle}>Import Excel File (.xlsx / .xls)</Text>
               <Text style={styles.profileRowChevron}>›</Text>
             </Pressable>
 
@@ -485,34 +447,7 @@ export function ProfileScreen({
       </Modal>
 
       {/* Import Data Modal */}
-      <Modal visible={showImportModal} transparent animationType="slide" onRequestClose={() => setShowImportModal(false)}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <Pressable style={styles.modalBackdrop} onPress={() => setShowImportModal(false)}>
-            <Pressable style={[styles.addSheet, darkMode && { backgroundColor: '#091510', borderColor: 'rgba(16,185,129,0.3)', borderWidth: 1 }, { paddingBottom: 28 }]} onPress={(event) => event.stopPropagation()}>
-              <View style={styles.sheetHandle} />
-              <Text style={[styles.sheetTitle, darkMode && { color: '#FFF' }]}>Import Expenses (CSV)</Text>
-              <Text style={[styles.sheetText, darkMode && { color: '#94A3B8' }]}>Paste CSV lines in format: ID,Type,Category,Amount,Date,Notes</Text>
-              <TextInput
-                value={importText}
-                onChangeText={setImportText}
-                placeholder={'ID,Type,Category,Amount,Date,Notes\n1,Expense,Food,350,2026-08-05,Lunch'}
-                placeholderTextColor="#94A3B8"
-                style={[styles.importTextInput, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', color: '#FFF' }]}
-                multiline
-                accessibilityLabel="CSV data to import"
-              />
-              <View style={{ flexDirection: 'row', gap: 12, width: '100%', marginTop: 16 }}>
-                <Pressable style={[styles.sheetClose, { flex: 1, backgroundColor: '#E2E8F0', marginTop: 0 }]} onPress={() => setShowImportModal(false)}>
-                  <Text style={[styles.sheetCloseText, { color: '#475569' }]}>Cancel</Text>
-                </Pressable>
-                <Pressable style={[styles.sheetClose, { flex: 1, marginTop: 0, backgroundColor: green }]} onPress={handleProcessImport}>
-                  <Text style={styles.sheetCloseText}>Import Data</Text>
-                </Pressable>
-              </View>
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
+
 
       {/* Bottom Navigation */}
       {darkMode ? (
