@@ -10,6 +10,7 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { InitialSetupScreen } from './src/screens/InitialSetupScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { ManageCategoriesScreen } from './src/screens/ManageCategoriesScreen';
+import { ManageRecurringScreen } from './src/screens/ManageRecurringScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { ReportsScreen } from './src/screens/ReportsScreen';
@@ -24,6 +25,7 @@ import {
   loadCurrency,
   loadDarkMode,
   loadNotifications,
+  loadRecurringRules,
   loadSetupCompleted,
   loadTransactions,
   loadUser,
@@ -33,12 +35,14 @@ import {
   saveCurrency,
   saveDarkMode,
   saveNotifications,
+  saveRecurringRules,
   saveSetupCompleted,
   saveTransactions,
   saveUser,
   saveWallets,
   updateUserProfile,
 } from './src/utils/storage';
+import { processRecurringRules } from './src/utils/recurringProcessor';
 import { styles } from './src/styles/styles';
 
 const SCREENS = {
@@ -53,6 +57,7 @@ const SCREENS = {
   EDIT_BUDGET: 'edit_budget',
   PROFILE: 'profile',
   MANAGE_CATEGORIES: 'manage_categories',
+  MANAGE_RECURRING: 'manage_recurring',
   ADD: 'add',
   DETAILS: 'details',
   EDIT: 'edit',
@@ -70,6 +75,7 @@ export default function App() {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [wallets, setWallets] = useState(DEFAULT_WALLETS);
   const [activeWalletId, setActiveWalletId] = useState('default_wallet');
+  const [recurringRules, setRecurringRules] = useState([]);
 
   const currentScreen = history[history.length - 1] || SCREENS.HOME;
 
@@ -158,6 +164,23 @@ export default function App() {
       });
       loadCurrency(activeUser.email).then(setCurrency);
       loadNotifications(activeUser.email).then(setNotifications);
+
+      loadRecurringRules(activeUser.email).then(async (storedRules) => {
+        if (Array.isArray(storedRules)) setRecurringRules(storedRules);
+        if (Array.isArray(storedRules) && storedRules.length > 0) {
+          const currentTx = (await loadTransactions(activeUser.email)) || [];
+          const { newTransactions, updatedRules } = processRecurringRules(storedRules, currentTx);
+          if (newTransactions.length > 0) {
+            const finalTx = [...newTransactions, ...currentTx];
+            setTransactions(finalTx);
+            saveTransactions(finalTx, activeUser.email);
+          }
+          if (JSON.stringify(updatedRules) !== JSON.stringify(storedRules)) {
+            setRecurringRules(updatedRules);
+            saveRecurringRules(updatedRules, activeUser.email);
+          }
+        }
+      });
     });
 
     loadDarkMode().then((isDark) => setDarkMode(isDark));
@@ -183,6 +206,21 @@ export default function App() {
     setCustomCategories(Array.isArray(cats) && cats.length > 0 ? cats : defaultCategories);
     setCurrency(await loadCurrency(userData.email));
     setNotifications(await loadNotifications(userData.email));
+
+    const rules = await loadRecurringRules(userData.email);
+    setRecurringRules(rules || []);
+    if (Array.isArray(rules) && rules.length > 0) {
+      const { newTransactions, updatedRules } = processRecurringRules(rules, txs || []);
+      if (newTransactions.length > 0) {
+        const finalTx = [...newTransactions, ...(txs || [])];
+        setTransactions(finalTx);
+        saveTransactions(finalTx, userData.email);
+      }
+      if (JSON.stringify(updatedRules) !== JSON.stringify(rules)) {
+        setRecurringRules(updatedRules);
+        saveRecurringRules(updatedRules, userData.email);
+      }
+    }
 
     const isSetupDone = await loadSetupCompleted(userData.email);
 
@@ -223,6 +261,7 @@ export default function App() {
     loadCategories(guestUser.email).then((cats) => setCustomCategories(Array.isArray(cats) && cats.length > 0 ? cats : defaultCategories));
     loadCurrency(guestUser.email).then(setCurrency);
     loadNotifications(guestUser.email).then(setNotifications);
+    loadRecurringRules(guestUser.email).then((r) => setRecurringRules(Array.isArray(r) ? r : []));
     setHistory([SCREENS.HOME]);
   };
 
@@ -248,6 +287,7 @@ export default function App() {
     setWallets(DEFAULT_WALLETS);
     setActiveWalletId('default_wallet');
     setCustomCategories(defaultCategories);
+    setRecurringRules([]);
     setCurrency('INR (₹)');
     setNotifications(true);
     setHistory([SCREENS.LOGIN]);
@@ -264,6 +304,7 @@ export default function App() {
     setWallets(DEFAULT_WALLETS);
     setActiveWalletId('default_wallet');
     setCustomCategories(defaultCategories);
+    setRecurringRules([]);
     setCurrency('INR (₹)');
     setNotifications(true);
     setHistory([SCREENS.LOGIN]);
@@ -277,17 +318,53 @@ export default function App() {
     });
   };
 
-  const handleAddTransaction = (transaction) => {
-    const txWithWallet = {
-      ...transaction,
-      walletId: transaction.walletId || activeWalletId || 'default_wallet',
-    };
-    setTransactions((current) => {
-      const updated = [txWithWallet, ...current];
-      saveTransactions(updated, user.email);
+  const handleAddTransaction = (transaction, recurringRule) => {
+    // If a recurring rule is present, processRecurringRules automatically generates the transaction(s) starting from fromDate.
+    // Therefore, txWithWallet is only included for non-recurring transactions to prevent duplicate entries on the start date.
+    const txWithWallet = (transaction && !recurringRule)
+      ? [
+          {
+            ...transaction,
+            walletId: transaction.walletId || activeWalletId || 'default_wallet',
+          },
+        ]
+      : [];
+
+    setTransactions((currentTx) => {
+      let updatedRulesList = recurringRules;
+      let extraRecurringTx = [];
+
+      if (recurringRule) {
+        const newRules = [recurringRule, ...recurringRules];
+        const processed = processRecurringRules(newRules, currentTx);
+        extraRecurringTx = processed.newTransactions;
+        updatedRulesList = processed.updatedRules;
+        setRecurringRules(updatedRulesList);
+        saveRecurringRules(updatedRulesList, user.email);
+      }
+
+      const finalTxList = [...extraRecurringTx, ...txWithWallet, ...currentTx];
+      saveTransactions(finalTxList, user.email);
+      return finalTxList;
+    });
+
+    popScreen();
+  };
+
+  const handleToggleRecurringRule = (ruleId) => {
+    setRecurringRules((current) => {
+      const updated = current.map((rule) => (rule.id === ruleId ? { ...rule, isActive: rule.isActive === false } : rule));
+      saveRecurringRules(updated, user.email);
       return updated;
     });
-    popScreen();
+  };
+
+  const handleDeleteRecurringRule = (ruleId) => {
+    setRecurringRules((current) => {
+      const updated = current.filter((rule) => rule.id !== ruleId);
+      saveRecurringRules(updated, user.email);
+      return updated;
+    });
   };
 
   const handleVoiceAdd = (transaction) => {
@@ -365,13 +442,45 @@ export default function App() {
     }
   };
 
-  const handleEditTransaction = (updatedTransaction) => {
-    setTransactions((current) => {
-      const updated = current.map((item) => (item.id === updatedTransaction.id ? updatedTransaction : item));
-      saveTransactions(updated, user.email);
-      return updated;
-    });
-    setSelectedTransaction(updatedTransaction);
+  const handleEditTransaction = (updatedTransaction, recurringRule) => {
+    if (recurringRule) {
+      setRecurringRules((currentRules) => {
+        const exists = currentRules.some((r) => r.id === recurringRule.id);
+        const updatedRules = exists
+          ? currentRules.map((r) => (r.id === recurringRule.id ? { ...r, ...recurringRule } : r))
+          : [recurringRule, ...currentRules];
+        saveRecurringRules(updatedRules, user.email);
+
+        // Re-process recurring rules to generate/update transactions
+        setTransactions((currentTx) => {
+          const processed = processRecurringRules(updatedRules, currentTx);
+          const finalTxList = processed.newTransactions.length > 0
+            ? [...processed.newTransactions, ...currentTx]
+            : currentTx;
+          saveTransactions(finalTxList, user.email);
+          return finalTxList;
+        });
+
+        return updatedRules;
+      });
+    }
+
+    if (updatedTransaction && updatedTransaction.id) {
+      setTransactions((current) => {
+        const exists = current.some((item) => item.id === updatedTransaction.id);
+        let updated;
+        if (exists) {
+          updated = current.map((item) => (item.id === updatedTransaction.id ? updatedTransaction : item));
+        } else if (!recurringRule) {
+          updated = [updatedTransaction, ...current];
+        } else {
+          updated = current;
+        }
+        saveTransactions(updated, user.email);
+        return updated;
+      });
+      setSelectedTransaction(updatedTransaction);
+    }
     popScreen();
   };
 
@@ -407,11 +516,13 @@ export default function App() {
     setWallets(DEFAULT_WALLETS);
     setActiveWalletId('default_wallet');
     setCustomCategories(defaultCategories);
+    setRecurringRules([]);
     await Promise.all([
       saveTransactions([], user.email),
       saveBudgets(null, user.email),
       saveWallets(DEFAULT_WALLETS, user.email),
       saveCategories(defaultCategories, user.email),
+      saveRecurringRules([], user.email),
     ]);
     setHistory([SCREENS.HOME]);
   };
@@ -527,6 +638,8 @@ export default function App() {
             onDeleteWallet={handleDeleteWallet}
             onOpenEditBudget={() => pushScreen(SCREENS.EDIT_BUDGET)}
             onOpenManageCategories={() => pushScreen(SCREENS.MANAGE_CATEGORIES)}
+            onOpenManageRecurring={() => pushScreen(SCREENS.MANAGE_RECURRING)}
+            recurringRules={recurringRules}
             onUpdateProfile={handleUpdateProfile}
             onLogout={handleLogout}
             onDeleteAccount={handleDeleteAccount}
@@ -545,9 +658,25 @@ export default function App() {
             onUpdateCategories={handleUpdateCategories}
           />
         );
+      case SCREENS.MANAGE_RECURRING:
+        return (
+          <ManageRecurringScreen
+            recurringRules={recurringRules}
+            categories={customCategories}
+            darkMode={darkMode}
+            onClose={popScreen}
+            onToggleRule={handleToggleRecurringRule}
+            onDeleteRule={handleDeleteRecurringRule}
+            onEditRule={(rule) => {
+              setSelectedTransaction(rule);
+              pushScreen(SCREENS.EDIT);
+            }}
+          />
+        );
       case SCREENS.ADD:
         return (
           <TransactionFormScreen
+            recurringRules={recurringRules}
             categories={customCategories}
             wallets={wallets}
             activeWalletId={activeWalletId}
@@ -575,8 +704,9 @@ export default function App() {
           return (
             <TransactionFormScreen
               transaction={selectedTransaction}
+              recurringRules={recurringRules}
               categories={customCategories}
-            wallets={wallets}
+              wallets={wallets}
               activeWalletId={activeWalletId}
               darkMode={darkMode}
               onClose={popScreen}

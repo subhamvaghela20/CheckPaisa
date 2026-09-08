@@ -297,6 +297,7 @@ export async function saveDarkMode(isDark) {
   }
 }
 
+
 function getSetupKey(email) {
   const sanitized = email ? email.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'default';
   return `@checkpaisa_setup_done_${sanitized}`;
@@ -322,5 +323,30 @@ export async function saveSetupCompleted(email, isCompleted = true) {
     }
   } catch (e) {
     console.error('Failed to save setup completed:', e);
+  }
+}
+
+function getRecurringRulesKey(email) {
+  const sanitized = email ? email.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'default';
+  return `@checkpaisa_recurring_rules_${sanitized}`;
+}
+
+export async function loadRecurringRules(email) {
+  try {
+    const key = getRecurringRulesKey(email);
+    const value = await AsyncStorage.getItem(key);
+    return value != null ? JSON.parse(value) : [];
+  } catch (e) {
+    console.error('Failed to load recurring rules:', e);
+    return [];
+  }
+}
+
+export async function saveRecurringRules(rules, email) {
+  try {
+    const key = getRecurringRulesKey(email);
+    await AsyncStorage.setItem(key, JSON.stringify(rules || []));
+  } catch (e) {
+    console.error('Failed to save recurring rules:', e);
   }
 }

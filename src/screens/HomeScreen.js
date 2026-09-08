@@ -187,7 +187,14 @@ export function HomeScreen({
                       </View>
 
                       <View style={styles.transactionRowText}>
-                        <Text style={styles.darkHomeRowTitle}>{transaction.category}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={styles.darkHomeRowTitle}>{transaction.category}</Text>
+                          {transaction.isRecurring ? (
+                            <View style={{ backgroundColor: 'rgba(16,185,129,0.2)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 6 }}>
+                              <Text style={{ fontSize: 10, color: '#10B981', fontWeight: '800' }}>🔄</Text>
+                            </View>
+                          ) : null}
+                        </View>
                         <Text style={styles.darkHomeRowSub}>{txTime}</Text>
                         {transaction.note ? <Text style={styles.darkHomeRowNote}>{transaction.note}</Text> : null}
                       </View>
@@ -365,7 +372,14 @@ export function HomeScreen({
                       />
                     </View>
                     <View style={styles.transactionRowText}>
-                      <Text style={styles.transactionRowTitle}>{transaction.category}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.transactionRowTitle}>{transaction.category}</Text>
+                        {transaction.isRecurring ? (
+                          <View style={{ backgroundColor: 'rgba(16,185,129,0.15)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 6 }}>
+                            <Text style={{ fontSize: 10, color: green, fontWeight: '800' }}>🔄</Text>
+                          </View>
+                        ) : null}
+                      </View>
                       <Text style={styles.transactionRowSub}>{txTime}</Text>
                       {transaction.note ? <Text style={styles.transactionRowNote}>{transaction.note}</Text> : null}
                     </View>

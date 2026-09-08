@@ -26,6 +26,8 @@ export function ProfileScreen({
   onToggleNotifications,
   onOpenEditBudget,
   onOpenManageCategories,
+  onOpenManageRecurring,
+  recurringRules = [],
   onUpdateProfile,
   onLogout,
   onDeleteAccount,
@@ -138,13 +140,12 @@ export function ProfileScreen({
     return values;
   };
 
-  // CSV Export Generator
   const handleExportCSV = async () => {
     if (transactions.length === 0) {
       return showAlert({ title: 'No Data to Export', message: 'There are no transaction records available to export.', icon: '📄' });
     }
 
-    let csvContent = `ID,Type,Category,Amount,Date,Notes,Wallet ID\n${transactions.map((t) => [
+    const csvContent = `ID,Type,Category,Amount,Date,Notes,Wallet ID\n${transactions.map((t) => [
       t.id, t.type, t.category, t.amount, t.createdAt, t.note || '', t.walletId || '',
     ].map(escapeCsvValue).join(',')).join('\n')}\n`;
     try {
@@ -157,21 +158,8 @@ export function ProfileScreen({
     } catch (e) {
       return showAlert({ title: 'Export Error', message: 'Could not create the CSV file. Please try again.' });
     }
-
-    /* Legacy preview retained below only for source compatibility. */
-    transactions.forEach((t) => {
-      const cleanNote = (t.note || '').replace(/"/g, '""');
-      csvContent += `"${t.id}","${t.type}","${t.category}",${t.amount},"${t.createdAt}","${cleanNote}"\n`;
-    });
-
-    showAlert({
-      title: 'Export Successful',
-      message: `Successfully generated export for ${transactions.length} transaction record(s).\n\nSample:\n${csvContent.slice(0, 160)}...`,
-      icon: '📊',
-    });
   };
 
-  // CSV Import Processor
   const handleProcessImport = () => {
     if (!importText.trim()) {
       return showAlert({ title: 'Empty Input', message: 'Please paste valid CSV data lines to import.', icon: '⚠️' });
@@ -202,62 +190,59 @@ export function ProfileScreen({
       });
 
       if (importedList.length === 0) {
-        return showAlert({ title: 'Import Error', message: 'Could not parse any valid transaction records. Please check the CSV line format.', icon: '⚠️' });
+        return showAlert({ title: 'Import Failed', message: 'No valid transaction records were found in the pasted CSV text.', icon: '⚠️' });
       }
 
-      onImportTransactions(importedList);
+      onImportTransactions?.(importedList);
       setShowImportModal(false);
       setImportText('');
-      showAlert({ title: 'Import Successful', message: `Successfully imported ${importedList.length} transaction record(s).`, icon: '✅' });
+      showAlert({ title: 'Import Complete', message: `Successfully imported ${importedList.length} transaction(s).`, icon: '✅' });
     } catch (e) {
-      showAlert({ title: 'Import Error', message: 'An unexpected error occurred while processing CSV import.', icon: '⚠️' });
+      showAlert({ title: 'Import Error', message: 'Failed to parse CSV text. Please verify formatting and try again.', icon: '⚠️' });
     }
   };
 
-  // Reset All Confirmation
-  const handleConfirmReset = () => {
-    showAlert({
-      title: 'Reset All Data',
-      message: 'Are you sure you want to reset all app records? This will delete all your transactions and budget limits.',
-      icon: '🗑️',
-      confirmText: 'Reset All',
-      cancelText: 'Cancel',
-      isDestructive: true,
-      onConfirm: () => {
-        closeAlert();
-        onResetAllData();
-      },
-    });
-  };
-
-  // Log Out Confirmation (For Registered Users Only)
   const handleConfirmLogout = () => {
     showAlert({
-      title: 'Log Out Account',
-      message: 'Are you sure you want to log out of your CheckPaisa account?',
+      title: 'Log Out',
+      message: 'Are you sure you want to log out of your account?',
       icon: '🚪',
       confirmText: 'Log Out',
       cancelText: 'Cancel',
       isDestructive: true,
       onConfirm: () => {
         closeAlert();
-        onLogout();
+        onLogout?.();
       },
     });
   };
 
-  // Delete Account Confirmation (For BOTH Guest User and Registered Users)
   const handleConfirmDeleteAccount = () => {
     showAlert({
       title: 'Delete Account',
-      message: 'Are you sure you want to delete your account? All saved transactions, budgets, and account credentials will be permanently erased.',
+      message: 'Are you sure you want to delete your account? All local transactions, categories, and settings will be permanently erased.',
       icon: '⚠️',
-      confirmText: 'Delete Permanently',
+      confirmText: 'Delete Account',
       cancelText: 'Cancel',
       isDestructive: true,
       onConfirm: () => {
         closeAlert();
-        onDeleteAccount();
+        onDeleteAccount?.();
+      },
+    });
+  };
+
+  const handleConfirmReset = () => {
+    showAlert({
+      title: 'Reset All Data',
+      message: 'This will permanently erase all transactions, custom categories, and budgets. Are you sure?',
+      icon: '🗑️',
+      confirmText: 'Reset Data',
+      cancelText: 'Cancel',
+      isDestructive: true,
+      onConfirm: () => {
+        closeAlert();
+        onResetAllData?.();
       },
     });
   };
@@ -360,6 +345,20 @@ export function ProfileScreen({
                 <Text style={styles.profileRowChevron}>›</Text>
               </View>
             </Pressable>
+
+            <View style={[styles.profileDivider, darkMode && { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
+
+            {/* Recurring Rules */}
+            <Pressable style={styles.profileRowItem} onPress={onOpenManageRecurring}>
+              <View style={[styles.profileRowIconTile, { backgroundColor: darkMode ? 'rgba(99,102,241,0.2)' : '#EEF2FF' }]}>
+                <Text style={{ fontSize: 16 }}>🔄</Text>
+              </View>
+              <Text style={rowLabelStyle}>Recurring Rules</Text>
+              <View style={styles.profileRowRight}>
+                <Text style={styles.profileRowValue}>{recurringRules.length} Rules</Text>
+                <Text style={styles.profileRowChevron}>›</Text>
+              </View>
+            </Pressable>
           </View>
         </View>
 
@@ -425,7 +424,7 @@ export function ProfileScreen({
         </View>
       </ScrollView>
 
-      {/* Edit Profile Popup Modal (Centered & Keyboard Safe) */}
+      {/* Edit Profile Popup Modal */}
       <Modal visible={showEditProfileModal} transparent animationType="fade" onRequestClose={() => setShowEditProfileModal(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalCenterBackdrop}>
           <Pressable style={darkMode ? styles.darkEditProfileModalCard : styles.currencyModalCard} onPress={(e) => e.stopPropagation()}>
@@ -489,28 +488,28 @@ export function ProfileScreen({
       <Modal visible={showImportModal} transparent animationType="slide" onRequestClose={() => setShowImportModal(false)}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <Pressable style={styles.modalBackdrop} onPress={() => setShowImportModal(false)}>
-          <Pressable style={[styles.addSheet, darkMode && { backgroundColor: '#091510', borderColor: 'rgba(16,185,129,0.3)', borderWidth: 1 }, { paddingBottom: 28 }]} onPress={(event) => event.stopPropagation()}>
-            <View style={styles.sheetHandle} />
-            <Text style={[styles.sheetTitle, darkMode && { color: '#FFF' }]}>Import Expenses (CSV)</Text>
-            <Text style={[styles.sheetText, darkMode && { color: '#94A3B8' }]}>Paste CSV lines in format: ID,Type,Category,Amount,Date,Notes</Text>
-            <TextInput
-              value={importText}
-              onChangeText={setImportText}
-              placeholder={'ID,Type,Category,Amount,Date,Notes\n1,Expense,Food,350,2026-08-05,Lunch'}
-              placeholderTextColor="#94A3B8"
-              style={[styles.importTextInput, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', color: '#FFF' }]}
-              multiline
-              accessibilityLabel="CSV data to import"
-            />
-            <View style={{ flexDirection: 'row', gap: 12, width: '100%', marginTop: 16 }}>
-              <Pressable style={[styles.sheetClose, { flex: 1, backgroundColor: '#E2E8F0', marginTop: 0 }]} onPress={() => setShowImportModal(false)}>
-                <Text style={[styles.sheetCloseText, { color: '#475569' }]}>Cancel</Text>
-              </Pressable>
-              <Pressable style={[styles.sheetClose, { flex: 1, marginTop: 0, backgroundColor: green }]} onPress={handleProcessImport}>
-                <Text style={styles.sheetCloseText}>Import Data</Text>
-              </Pressable>
-            </View>
-          </Pressable>
+            <Pressable style={[styles.addSheet, darkMode && { backgroundColor: '#091510', borderColor: 'rgba(16,185,129,0.3)', borderWidth: 1 }, { paddingBottom: 28 }]} onPress={(event) => event.stopPropagation()}>
+              <View style={styles.sheetHandle} />
+              <Text style={[styles.sheetTitle, darkMode && { color: '#FFF' }]}>Import Expenses (CSV)</Text>
+              <Text style={[styles.sheetText, darkMode && { color: '#94A3B8' }]}>Paste CSV lines in format: ID,Type,Category,Amount,Date,Notes</Text>
+              <TextInput
+                value={importText}
+                onChangeText={setImportText}
+                placeholder={'ID,Type,Category,Amount,Date,Notes\n1,Expense,Food,350,2026-08-05,Lunch'}
+                placeholderTextColor="#94A3B8"
+                style={[styles.importTextInput, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', color: '#FFF' }]}
+                multiline
+                accessibilityLabel="CSV data to import"
+              />
+              <View style={{ flexDirection: 'row', gap: 12, width: '100%', marginTop: 16 }}>
+                <Pressable style={[styles.sheetClose, { flex: 1, backgroundColor: '#E2E8F0', marginTop: 0 }]} onPress={() => setShowImportModal(false)}>
+                  <Text style={[styles.sheetCloseText, { color: '#475569' }]}>Cancel</Text>
+                </Pressable>
+                <Pressable style={[styles.sheetClose, { flex: 1, marginTop: 0, backgroundColor: green }]} onPress={handleProcessImport}>
+                  <Text style={styles.sheetCloseText}>Import Data</Text>
+                </Pressable>
+              </View>
+            </Pressable>
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
@@ -556,7 +555,7 @@ export function ProfileScreen({
         <Pressable style={styles.modalCenterBackdrop} onPress={() => setShowWalletModal(false)}>
           <Pressable style={[styles.walletModalCard, darkMode && { backgroundColor: '#091510', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' }]} onPress={(e) => e.stopPropagation()}>
             <Text style={[styles.walletModalTitle, darkMode && { color: '#fff' }]}>Manage Wallets</Text>
-            
+
             <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={true}>
               {wallets.map((w) => {
                 const wTx = transactions.filter((tx) => !tx.walletId || tx.walletId === w.id);
@@ -631,7 +630,7 @@ export function ProfileScreen({
         </Pressable>
       </Modal>
 
-      {/* Create New Wallet Modal (Centered & Keyboard Safe) */}
+      {/* Create New Wallet Modal */}
       <Modal visible={showAddWalletModal} transparent animationType="fade" onRequestClose={() => setShowAddWalletModal(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalCenterBackdrop}>
           <View style={[styles.currencyModalCard, darkMode && styles.darkEditProfileModalCard]}>
@@ -686,7 +685,7 @@ export function ProfileScreen({
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Edit Wallet Modal (Centered & Keyboard Safe, Updates Name + Initial Balance) */}
+      {/* Edit Wallet Modal */}
       <Modal visible={Boolean(editingWallet)} transparent animationType="fade" onRequestClose={() => setEditingWallet(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalCenterBackdrop}>
           <View style={[styles.currencyModalCard, darkMode && styles.darkEditProfileModalCard]}>

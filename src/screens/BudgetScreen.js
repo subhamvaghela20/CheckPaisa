@@ -21,20 +21,31 @@ export function BudgetScreen({ transactions = [], budgets = null, customCategori
     return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth && t.type === 'Expense' && (!activeWalletId || !t.walletId || t.walletId === activeWalletId);
   });
 
-  const expenseCategories = (customCategories.length > 0 ? customCategories : defaultCategories).filter((c) => c.type === 'Expense');
+  const expenseCategories = (customCategories && customCategories.length > 0 ? customCategories : defaultCategories).filter((c) => c.type === 'Expense');
   const hasBudgetSet = Boolean(budgets && Object.keys(budgets).length > 0);
+
+  const getBudgetInfo = (bEntry) => {
+    if (!bEntry) return { limit: 0, isActive: true };
+    if (typeof bEntry === 'object' && bEntry !== null) {
+      return { limit: Number(bEntry.amount || 0), isActive: bEntry.isActive !== false };
+    }
+    return { limit: Number(bEntry || 0), isActive: true };
+  };
 
   const categoryBudgets = expenseCategories
     .map((cat) => {
-      const budgetLimit = budgets && budgets[cat.name] ? Number(budgets[cat.name]) : 0;
+      const bInfo = getBudgetInfo(budgets && budgets[cat.name]);
+      const isCatActive = cat.isActive !== false;
+      const isBudgetActive = bInfo.isActive && isCatActive;
+      const budgetLimit = isBudgetActive ? bInfo.limit : 0;
       const spent = currentMonthExpenses
         .filter((t) => t.category === cat.name)
         .reduce((sum, t) => sum + t.amount, 0);
       const isExceeded = budgetLimit > 0 && spent > budgetLimit;
       const percentage = budgetLimit > 0 ? Math.round((spent / budgetLimit) * 100) : 0;
-      return { ...cat, budget: budgetLimit, spent, isExceeded, percentage };
+      return { ...cat, budget: budgetLimit, spent, isExceeded, percentage, isBudgetActive };
     })
-    .filter((cat) => cat.budget > 0 || cat.spent > 0);
+    .filter((cat) => (cat.budget > 0 || cat.spent > 0) && cat.isActive !== false);
 
   const totalBudget = categoryBudgets.reduce((sum, c) => sum + c.budget, 0);
   const totalSpent = categoryBudgets.reduce((sum, c) => sum + c.spent, 0);
