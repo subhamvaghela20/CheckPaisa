@@ -700,10 +700,24 @@ export default function App() {
     }
   };
 
+  const isHeroGreen =
+    (currentScreen === SCREENS.HOME && !darkMode) ||
+    currentScreen === SCREENS.ADD ||
+    currentScreen === SCREENS.EDIT ||
+    currentScreen === SCREENS.EDIT_BUDGET ||
+    currentScreen === SCREENS.MANAGE_CATEGORIES;
+
+  const statusBarStyle = darkMode || isHeroGreen ? 'light' : 'dark';
+  const rootBg = darkMode
+    ? '#040C08'
+    : isHeroGreen
+    ? (currentScreen === SCREENS.HOME ? '#0FBD89' : '#10B981')
+    : '#F8FAFC';
+
   return (
     <SafeAreaProvider>
-      <SafeAreaView edges={['top', 'left', 'right']} style={[styles.screen, (currentScreen === SCREENS.SPLASH || currentScreen === SCREENS.LOGIN || darkMode) && styles.splashScreen]}>
-        <StatusBar style={currentScreen === SCREENS.SPLASH || (currentScreen === SCREENS.LOGIN && darkMode) || darkMode ? 'light' : 'dark'} />
+      <SafeAreaView edges={['left', 'right']} style={{ flex: 1, backgroundColor: rootBg }}>
+        <StatusBar style={statusBarStyle} translucent={true} backgroundColor="transparent" />
         {renderScreen()}
       </SafeAreaView>
     </SafeAreaProvider>

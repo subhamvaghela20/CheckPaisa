@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '../components/AppIcon';
 import { categories as defaultCategories } from '../data/appData';
@@ -10,6 +11,7 @@ const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'S
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export function AdvancedReportsScreen({ transactions = [], customCategories = defaultCategories, activeWalletId, darkMode = false, onBack, onOpenTransaction }) {
+  const insets = useSafeAreaInsets();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showMonthPicker, setShowMonthPicker] = useState(false);
 
@@ -78,7 +80,7 @@ export function AdvancedReportsScreen({ transactions = [], customCategories = de
   const innerContent = (
     <ScrollView style={styles.homeMainScroll} contentContainerStyle={styles.homeMainScrollContent} showsVerticalScrollIndicator={false}>
       {/* Header */}
-      <View style={styles.advancedHeaderRow}>
+      <View style={[styles.advancedHeaderRow, { paddingTop: insets.top + 12 }]}>
         <Pressable style={[styles.detailBack, darkMode && { backgroundColor: 'rgba(15,27,21,0.85)' }]} onPress={onBack}>
           <AppIcon name="back" color={darkMode ? '#10B981' : '#334155'} size={22} />
         </Pressable>

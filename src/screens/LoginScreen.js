@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '../components/AppIcon';
 import { CustomAlertModal } from '../components/CustomAlertModal';
@@ -7,6 +8,7 @@ import { loadRegisteredUsers, saveRegisteredUsers } from '../utils/storage';
 import { green, styles } from '../styles/styles';
 
 export function LoginScreen({ darkMode = false, onLoginSuccess, onGuestContinue }) {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -110,7 +112,7 @@ export function LoginScreen({ darkMode = false, onLoginSuccess, onGuestContinue 
       {!darkMode ? (
         <View style={styles.lightAuthContainer}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={[styles.exactAuthScrollContent, { paddingBottom: 140 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView contentContainerStyle={[styles.exactAuthScrollContent, { paddingTop: insets.top + 20, paddingBottom: 140 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <View style={styles.lightAuthCard}>
               {/* Logo Header */}
               <View style={styles.exactAuthLogoHeaderRow}>
@@ -235,7 +237,7 @@ export function LoginScreen({ darkMode = false, onLoginSuccess, onGuestContinue 
           <View style={styles.exactAuthGlowTopRight} pointerEvents="none" />
 
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={[styles.exactAuthScrollContent, { paddingBottom: 140 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView contentContainerStyle={[styles.exactAuthScrollContent, { paddingTop: insets.top + 20, paddingBottom: 140 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <View style={styles.exactAuthCard}>
               {/* Logo Header */}
               <View style={styles.exactAuthLogoHeaderRow}>

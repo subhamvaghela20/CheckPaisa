@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   GreenCheckmarkRingIcon,
   LineChartSilhouette,
@@ -8,8 +9,9 @@ import {
 import { styles } from '../styles/styles';
 
 export function SplashScreen() {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.lightSplashContainer}>
+    <View style={[styles.lightSplashContainer, { paddingTop: insets.top + 20 }]}>
       {/* Top Header Branding Section */}
       <View style={styles.splashHeader}>
         <GreenCheckmarkRingIcon size={88} />

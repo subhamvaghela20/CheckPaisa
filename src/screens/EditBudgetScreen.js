@@ -110,7 +110,7 @@ export function EditBudgetScreen({ budgets: budgetsProp, categories = defaultCat
             keyboardShouldPersistTaps="handled"
           >
 
-        <View onLayout={(event) => { headerHeight.current = event.nativeEvent.layout.height; }} style={[styles.formHero, darkMode && { backgroundColor: '#0B2E21' }]}>
+        <View onLayout={(event) => { headerHeight.current = event.nativeEvent.layout.height; }} style={[styles.formHero, { paddingTop: insets.top + 12 }, darkMode && { backgroundColor: '#0B2E21' }]}>
           <View style={styles.formHeader}>
             <Pressable style={styles.formClose} onPress={onBack}>
               <AppIcon name="back" size={20} color="#FFFFFF" />
@@ -122,25 +122,43 @@ export function EditBudgetScreen({ budgets: budgetsProp, categories = defaultCat
           <Text style={styles.editBudgetSubtitle}>Edit budget limits and toggle active status for each category</Text>
         </View>
 
-        <View style={[styles.formPanel, { flex: 0, flexGrow: 1, padding: 20 }, darkMode && { backgroundColor: '#091510' }]}>
+        <View style={[styles.formPanel, { flex: 0, flexGrow: 1, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 16 }, darkMode && { backgroundColor: '#091510' }]}>
             {expenseCategories.map((cat, index) => {
               const isBudgetActive = activeBudgets[cat.name] !== false;
               return (
-                <View key={cat.name} onLayout={(event) => { rowOffsets.current[index] = event.nativeEvent.layout.y; }} style={[styles.editBudgetRow, { flexWrap: 'wrap', gap: 8 }, darkMode && { borderBottomColor: 'rgba(255,255,255,0.08)' }, !isBudgetActive && { opacity: 0.5 }]}>
-                  <View style={[styles.transactionCategoryIcon, { backgroundColor: `${cat.color || '#10B981'}18` }]}>
-                    <AppIcon name={cat.icon || 'other'} color={cat.color || green} size={21} />
+                <View
+                  key={cat.name}
+                  onLayout={(event) => { rowOffsets.current[index] = event.nativeEvent.layout.y; }}
+                  style={[
+                    styles.editBudgetRow,
+                    { paddingVertical: 8, gap: 8, alignItems: 'center', justifyContent: 'space-between' },
+                    darkMode && { borderBottomColor: 'rgba(255,255,255,0.08)' },
+                    !isBudgetActive && { opacity: 0.5 },
+                  ]}
+                >
+                  <View style={[styles.transactionCategoryIcon, { width: 36, height: 36, borderRadius: 11, backgroundColor: `${cat.color || '#10B981'}18` }]}>
+                    <AppIcon name={cat.icon || 'other'} color={cat.color || green} size={20} />
                   </View>
 
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.editBudgetCatName, { flex: 0, marginLeft: 0 }, darkMode && { color: '#FFFFFF' }, !isBudgetActive && { textDecorationLine: 'line-through', color: '#94A3B8' }]}>
+                  <View style={{ flex: 1, minWidth: 0, marginRight: 6 }}>
+                    <Text
+                      style={[
+                        styles.editBudgetCatName,
+                        { flex: 0, marginLeft: 0, fontSize: 14 },
+                        darkMode && { color: '#FFFFFF' },
+                        !isBudgetActive && { textDecorationLine: 'line-through', color: '#94A3B8' },
+                      ]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
                       {cat.name}
                     </Text>
-                    <Text style={{ fontSize: 11, color: isBudgetActive ? green : '#EF4444', fontWeight: '700', marginTop: 2 }}>
-                      {cat.isActive === false ? 'Category inactive — enable in Profile' : isBudgetActive ? 'Budget active' : 'Budget paused'}
+                    <Text style={{ fontSize: 11, color: isBudgetActive ? green : '#EF4444', fontWeight: '700', marginTop: 1 }} numberOfLines={1}>
+                      {cat.isActive === false ? 'Inactive' : isBudgetActive ? 'Active' : 'Paused'}
                     </Text>
                   </View>
 
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 10, width: '100%' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     {/* Active/Inactive Switch */}
                     <Switch
                       value={isBudgetActive}

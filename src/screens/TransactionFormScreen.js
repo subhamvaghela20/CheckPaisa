@@ -214,7 +214,7 @@ export function TransactionFormScreen({
             keyboardShouldPersistTaps="handled"
           >
 
-        <View style={[styles.formHero, darkMode && { backgroundColor: '#0B2E21' }]}>
+        <View style={[styles.formHero, { paddingTop: insets.top + 12 }, darkMode && { backgroundColor: '#0B2E21' }]}>
           <View style={styles.formHeader}>
             <Pressable style={styles.formClose} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close transaction form" hitSlop={6}>
               <AppIcon name="back" size={20} color="#FFFFFF" />
@@ -237,7 +237,7 @@ export function TransactionFormScreen({
             />
           </View>
         </View>
-        <View style={[styles.formPanel, { flex: 0, flexGrow: 1, padding: 20 }, darkMode && { backgroundColor: '#091510' }]}>
+        <View style={[styles.formPanel, { flex: 0, flexGrow: 1, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 16 }, darkMode && { backgroundColor: '#091510' }]}>
             <View style={[styles.typeToggle, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', borderWidth: 1 }]}>
               <Pressable style={[styles.typeOption, type === 'Expense' && (darkMode ? { backgroundColor: '#EF4444' } : styles.selectedType)]} onPress={() => handleTypeChange('Expense')}>
                 <Text style={[styles.typeText, type === 'Expense' && (darkMode ? { color: '#FFF', fontWeight: '800' } : styles.expenseTypeText)]}>Expense</Text>
@@ -264,9 +264,9 @@ export function TransactionFormScreen({
 
             {/* Wallet Selection Pill List */}
             {wallets.length > 0 && (
-              <View style={{ marginTop: 16 }}>
-                <Text style={[styles.dateTimeLabel, { marginBottom: 6 }, darkMode && { color: '#94A3B8' }]}>Wallet / Account</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <View style={{ marginTop: 10 }}>
+                <Text style={[styles.dateTimeLabel, { marginBottom: 4 }, darkMode && { color: '#94A3B8' }]}>Wallet / Account</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
                   {wallets.map((w) => {
                     const isSel = w.id === walletId;
                     return (
@@ -278,7 +278,7 @@ export function TransactionFormScreen({
                         accessibilityLabel={`Select wallet ${w.name}`}
                         style={[
                           styles.walletPill,
-                          { backgroundColor: darkMode ? 'rgba(4,12,8,0.8)' : '#F1F5F9', borderColor: '#CBD5E1' },
+                          { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10, backgroundColor: darkMode ? 'rgba(4,12,8,0.8)' : '#F1F5F9', borderColor: '#CBD5E1' },
                           isSel && { backgroundColor: '#10B981', borderColor: '#10B981' },
                         ]}
                       >
@@ -295,9 +295,9 @@ export function TransactionFormScreen({
             {/* Recurring Transaction Section */}
             {!editingOccurrence && <View
               style={{
-                marginTop: 18,
-                padding: 14,
-                borderRadius: 16,
+                marginTop: 10,
+                padding: 10,
+                borderRadius: 14,
                 backgroundColor: isRecurring
                   ? (darkMode ? 'rgba(16,185,129,0.12)' : '#F0FDF4')
                   : (darkMode ? '#040C08' : '#F8FAFC'),
@@ -308,21 +308,21 @@ export function TransactionFormScreen({
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 }}>
                   <View
                     style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 12,
+                      width: 32,
+                      height: 32,
+                      borderRadius: 10,
                       backgroundColor: isRecurring ? green : (darkMode ? 'rgba(255,255,255,0.08)' : '#E2E8F0'),
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <Text style={{ fontSize: 18 }}>🔄</Text>
+                    <Text style={{ fontSize: 15 }}>🔄</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: darkMode ? '#FFF' : '#1E293B' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: darkMode ? '#FFF' : '#1E293B' }}>
                       Make Recurring Entry
                     </Text>
                     <Text style={{ fontSize: 11, color: darkMode ? '#94A3B8' : '#64748B', marginTop: 1 }}>
@@ -340,39 +340,39 @@ export function TransactionFormScreen({
                 />
               </View>
 
-                {isRecurring && (
-                  <View style={{ marginTop: 14 }}>
-                    {/* Frequency Selector */}
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: darkMode ? '#A7F3D0' : '#475569', marginBottom: 6 }}>
-                      Repeat Frequency
-                    </Text>
-                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                      {['Daily', 'Weekly', 'Monthly'].map((freq) => {
-                        const isSel = recurringFrequency === freq;
-                        return (
-                          <Pressable
-                            key={freq}
-                            onPress={() => setRecurringFrequency(freq)}
-                            style={{
-                              flex: 1,
-                              paddingVertical: 8,
-                              borderRadius: 10,
-                              alignItems: 'center',
-                              backgroundColor: isSel ? green : darkMode ? '#091510' : '#E2E8F0',
-                            }}
-                          >
-                            <Text style={{ fontSize: 12, fontWeight: '800', color: isSel ? '#FFF' : darkMode ? '#94A3B8' : '#334155' }}>
-                              {freq}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
+              {isRecurring && (
+                <View style={{ marginTop: 10 }}>
+                  {/* Frequency Selector */}
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: darkMode ? '#A7F3D0' : '#475569', marginBottom: 4 }}>
+                    Repeat Frequency
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
+                    {['Daily', 'Weekly', 'Monthly'].map((freq) => {
+                      const isSel = recurringFrequency === freq;
+                      return (
+                        <Pressable
+                          key={freq}
+                          onPress={() => setRecurringFrequency(freq)}
+                          style={{
+                            flex: 1,
+                            paddingVertical: 6,
+                            borderRadius: 8,
+                            alignItems: 'center',
+                            backgroundColor: isSel ? green : darkMode ? '#091510' : '#E2E8F0',
+                          }}
+                        >
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: isSel ? '#FFF' : darkMode ? '#94A3B8' : '#334155' }}>
+                            {freq}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
 
                     {/* Day of Week Selector for Weekly */}
                     {recurringFrequency === 'Weekly' && (
-                      <View style={{ marginBottom: 12 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: darkMode ? '#A7F3D0' : '#475569', marginBottom: 6 }}>
+                      <View style={{ marginBottom: 10 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: darkMode ? '#A7F3D0' : '#475569', marginBottom: 4 }}>
                           Repeat Day of Week
                         </Text>
                         <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -392,7 +392,7 @@ export function TransactionFormScreen({
                                 onPress={() => setRepeatDayOfWeek(day.value)}
                                 style={{
                                   flex: 1,
-                                  paddingVertical: 10,
+                                  paddingVertical: 7,
                                   borderRadius: 8,
                                   alignItems: 'center',
                                   justifyContent: 'center',
@@ -413,8 +413,8 @@ export function TransactionFormScreen({
 
                     {/* Day of Month Selector for Monthly */}
                     {recurringFrequency === 'Monthly' && (
-                      <View style={{ marginBottom: 12 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: darkMode ? '#A7F3D0' : '#475569', marginBottom: 6 }}>
+                      <View style={{ marginBottom: 10 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: darkMode ? '#A7F3D0' : '#475569', marginBottom: 4 }}>
                           Repeat Day of Month ({repeatDayOfMonth})
                         </Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
@@ -425,9 +425,9 @@ export function TransactionFormScreen({
                                 key={dayNum}
                                 onPress={() => setRepeatDayOfMonth(dayNum)}
                                 style={{
-                                  width: 36,
-                                  height: 36,
-                                  borderRadius: 18,
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: 16,
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   backgroundColor: isSelected ? green : darkMode ? '#091510' : '#FFF',
@@ -435,7 +435,7 @@ export function TransactionFormScreen({
                                   borderColor: darkMode ? 'rgba(16,185,129,0.3)' : '#CBD5E1',
                                 }}
                               >
-                                <Text style={{ fontSize: 12, fontWeight: '800', color: isSelected ? '#FFF' : darkMode ? '#94A3B8' : '#334155' }}>
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: isSelected ? '#FFF' : darkMode ? '#94A3B8' : '#334155' }}>
                                   {dayNum}
                                 </Text>
                               </Pressable>
@@ -446,12 +446,12 @@ export function TransactionFormScreen({
                     )}
 
                     {/* From Date & To Date Pickers */}
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
                       <Pressable
                         style={{
                           flex: 1,
-                          padding: 10,
-                          borderRadius: 10,
+                          padding: 8,
+                          borderRadius: 8,
                           backgroundColor: darkMode ? '#091510' : '#FFF',
                           borderWidth: 1,
                           borderColor: darkMode ? 'rgba(16,185,129,0.3)' : '#CBD5E1',
@@ -469,8 +469,8 @@ export function TransactionFormScreen({
                       <Pressable
                         style={{
                           flex: 1,
-                          padding: 10,
-                          borderRadius: 10,
+                          padding: 8,
+                          borderRadius: 8,
                           backgroundColor: darkMode ? '#091510' : '#FFF',
                           borderWidth: 1,
                           borderColor: darkMode ? 'rgba(16,185,129,0.3)' : '#CBD5E1',
@@ -498,7 +498,7 @@ export function TransactionFormScreen({
                 )}
               </View>}
             {(editingOccurrence || editingRule) ? (
-              <Text style={{ color: darkMode ? '#94A3B8' : '#475569', marginTop: 12 }}>
+              <Text style={{ color: darkMode ? '#94A3B8' : '#475569', marginTop: 6 }}>
                 {editingOccurrence ? 'Changes apply only to this entry. Manage the schedule in Profile → Recurring Rules.' : 'Changes apply after today. Turning this off pauses the schedule; existing entries stay unchanged.'}
               </Text>
             ) : null}
@@ -519,7 +519,7 @@ export function TransactionFormScreen({
                         isSelected && { borderColor: catColor, borderWidth: 2, backgroundColor: darkMode ? 'rgba(16,185,129,0.15)' : '#FFF7ED' },
                       ]}
                     >
-                      <AppIcon name={item.icon || 'other'} color={catColor} size={24} />
+                      <AppIcon name={item.icon || 'other'} color={catColor} size={22} />
                     </View>
                     <Text style={[styles.categoryName, darkMode && { color: '#94A3B8' }, isSelected && { color: catColor, fontWeight: '800' }]}>
                       {item.name}{item.isActive === false ? ' (inactive)' : ''}

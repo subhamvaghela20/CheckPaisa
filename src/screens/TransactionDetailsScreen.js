@@ -21,7 +21,7 @@ export function TransactionDetailsScreen({ transaction, categories = defaultCate
   };
 
   return (
-    <View style={[{ flex: 1, backgroundColor: darkMode ? '#040C08' : '#F8FAFC', paddingTop: 12 }]}>
+    <View style={[{ flex: 1, backgroundColor: darkMode ? '#040C08' : '#F8FAFC', paddingTop: insets.top + 12 }]}>
       {/* Header */}
       <View style={styles.detailsHeader}>
         <Pressable

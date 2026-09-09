@@ -47,7 +47,7 @@ export function ManageRecurringScreen({
   };
 
   return (
-    <View style={[styles.detailsScreen, { paddingTop: 12, paddingHorizontal: 12 }, darkMode && { backgroundColor: '#040C08' }]}>
+    <View style={[styles.detailsScreen, { paddingTop: insets.top + 12, paddingHorizontal: 12 }, darkMode && { backgroundColor: '#040C08' }]}>
       {/* Top Header */}
       <View style={styles.detailsHeader}>
         <Pressable

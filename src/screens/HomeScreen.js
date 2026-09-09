@@ -93,7 +93,7 @@ export function HomeScreen({
 
         <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.darkHomeScrollContent, { paddingBottom: 110 + insets.bottom }]} showsVerticalScrollIndicator={false}>
           {/* Top Hero Header Block */}
-          <View style={styles.darkHomeHero}>
+          <View style={[styles.darkHomeHero, { paddingTop: insets.top + 12 }]}>
             <View style={[styles.homeTopRow, styles.darkUserGreetingHighlight]}>
               <LinearGradient colors={['#10B981', '#059669']} style={styles.darkHomeAvatar}>
                 <Text style={styles.darkHomeAvatarText}>{initial}</Text>
@@ -283,7 +283,7 @@ export function HomeScreen({
   return (
     <View style={styles.home}>
       <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.homeMainScrollContent, { paddingBottom: 110 + insets.bottom }]} showsVerticalScrollIndicator={false}>
-        <View style={styles.homeHero}>
+        <View style={[styles.homeHero, { paddingTop: insets.top + 12 }]}>
           <View style={[styles.homeTopRow, styles.homeUserGreetingHighlight]}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{initial}</Text>

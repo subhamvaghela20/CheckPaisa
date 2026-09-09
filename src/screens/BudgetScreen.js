@@ -61,7 +61,7 @@ export function BudgetScreen({ transactions = [], budgets = null, customCategori
     <>
       <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.homeMainScrollContent, { paddingBottom: 120 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         {/* Top Header */}
-        <View style={styles.reportsHeaderContainer}>
+        <View style={[styles.reportsHeaderContainer, { paddingTop: insets.top + 12 }]}>
           <Text style={[styles.reportsTitle, darkMode && { color: '#FFF' }]}>Budget Alert</Text>
           {hasBudgetSet && (
             <Pressable style={[styles.advancedMonthPill, darkMode && { backgroundColor: 'rgba(16,185,129,0.2)', borderColor: '#10B981' }]} onPress={onOpenEditBudget}>

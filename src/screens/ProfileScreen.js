@@ -217,7 +217,7 @@ export function ProfileScreen({
     <>
       <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.homeMainScrollContent, { paddingBottom: 110 }]} showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
-        <View style={styles.profileHeaderSection}>
+        <View style={[styles.profileHeaderSection, { paddingTop: insets.top + 16 }]}>
           {darkMode ? (
             <LinearGradient colors={['#10B981', '#059669']} style={styles.profileAvatarLarge}>
               <Text style={[styles.profileAvatarText, { color: '#000' }]}>{initial}</Text>
@@ -488,10 +488,10 @@ export function ProfileScreen({
       {/* Wallet Management Modal */}
       <Modal visible={showWalletModal} transparent animationType="fade" onRequestClose={() => setShowWalletModal(false)}>
         <Pressable style={styles.modalCenterBackdrop} onPress={() => setShowWalletModal(false)}>
-          <Pressable style={[styles.walletModalCard, darkMode && { backgroundColor: '#091510', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' }]} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.walletModalCard, { width: '94%', maxWidth: 440, paddingHorizontal: 16, paddingVertical: 20 }, darkMode && { backgroundColor: '#091510', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' }]} onPress={(e) => e.stopPropagation()}>
             <Text style={[styles.walletModalTitle, darkMode && { color: '#fff' }]}>Manage Wallets</Text>
 
-            <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={true}>
+            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={true}>
               {wallets.map((w) => {
                 const wTx = transactions.filter((tx) => !tx.walletId || tx.walletId === w.id);
                 const wInc = wTx.filter((t) => t.type === 'Income').reduce((s, t) => s + t.amount, 0);
@@ -500,33 +500,38 @@ export function ProfileScreen({
                 const isSelected = w.id === activeWalletId;
 
                 return (
-                  <View key={w.id} style={[styles.walletItemCard, darkMode && styles.darkWalletItemCard, isSelected && { borderColor: green, borderWidth: 1.5 }]}>
-                    <View style={{ flex: 1 }}>
+                  <View key={w.id} style={[styles.walletItemCard, { paddingHorizontal: 12, paddingVertical: 10 }, darkMode && styles.darkWalletItemCard, isSelected && { borderColor: green, borderWidth: 1.5 }]}>
+                    <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={[styles.walletItemName, darkMode && { color: '#fff' }]}>{w.name}</Text>
+                        <Text style={[styles.walletItemName, darkMode && { color: '#fff' }]} numberOfLines={1} ellipsizeMode="tail">{w.name}</Text>
                         {w.isDefault && <Text style={styles.walletDefaultBadge}>Default</Text>}
                         {isSelected && <Text style={[styles.walletDefaultBadge, { backgroundColor: '#10B981', color: '#fff' }]}>Active</Text>}
                       </View>
-                      <Text style={styles.walletItemSub}>
-                        Balance: ₹{currentBal.toLocaleString('en-IN')} (Initial: ₹{(w.initialBalance || 0).toLocaleString('en-IN')})
+                      <Text style={[styles.walletItemSub, { marginTop: 4, fontWeight: '700', fontSize: 12 }, darkMode && { color: '#CBD5E1' }]}>
+                        Balance: ₹{currentBal.toLocaleString('en-IN')}
+                      </Text>
+                      <Text style={[styles.walletItemSub, { marginTop: 1, fontSize: 11, color: darkMode ? '#94A3B8' : '#64748B' }]}>
+                        Initial: ₹{(w.initialBalance || 0).toLocaleString('en-IN')}
                       </Text>
                     </View>
 
-                    <View style={styles.walletItemActions}>
+                    <View style={[styles.walletItemActions, { gap: 6, flexShrink: 0 }]}>
                       <Pressable
-                        style={[styles.walletActionIconBtn, darkMode && styles.darkWalletActionIconBtn]}
+                        style={[styles.walletActionIconBtn, { width: 34, height: 34, borderRadius: 10 }, darkMode && styles.darkWalletActionIconBtn]}
                         onPress={() => {
                           setEditingWallet(w);
                           setRenameText(w.name);
                           setRenameBalance(String(w.initialBalance || 0));
                         }}
+                        hitSlop={6}
+                        accessibilityLabel={`Edit ${w.name}`}
                       >
                         <AppIcon name="edit" color={darkMode ? "#A7F3D0" : "#334155"} size={16} />
                       </Pressable>
 
                       {!w.isDefault && w.id !== 'default_wallet' && (
                         <Pressable
-                          style={[styles.walletActionIconBtn, styles.walletDeleteBtn]}
+                          style={[styles.walletActionIconBtn, styles.walletDeleteBtn, { width: 34, height: 34, borderRadius: 10, backgroundColor: darkMode ? 'rgba(239, 68, 68, 0.18)' : '#FEE2E2' }]}
                           onPress={() => {
                             showAlert({
                               title: 'Delete Wallet',
@@ -538,8 +543,10 @@ export function ProfileScreen({
                               onConfirm: () => onDeleteWallet?.(w.id),
                             });
                           }}
+                          hitSlop={6}
+                          accessibilityLabel={`Delete ${w.name}`}
                         >
-                          <AppIcon name="other" color="#EF4444" size={16} />
+                          <AppIcon name="delete" color="#EF4444" size={16} />
                         </Pressable>
                       )}
                     </View>
@@ -568,12 +575,12 @@ export function ProfileScreen({
       {/* Create New Wallet Modal */}
       <Modal visible={showAddWalletModal} transparent animationType="fade" onRequestClose={() => setShowAddWalletModal(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalCenterBackdrop}>
-          <View style={[styles.currencyModalCard, darkMode && styles.darkEditProfileModalCard]}>
+          <View style={[styles.currencyModalCard, { width: '92%', maxWidth: 420, padding: 20 }, darkMode && styles.darkEditProfileModalCard]}>
             <Text style={[styles.currencyModalTitle, darkMode && { color: '#fff' }]}>Create New Wallet</Text>
 
             <Text style={[styles.inputLabel, darkMode && { color: '#A7F3D0' }]}>Wallet Name</Text>
             <TextInput
-              style={[styles.budgetInput, { backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, height: 46, marginBottom: 12 }, darkMode && styles.darkEditInput]}
+              style={[styles.budgetInput, { backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, height: 44, marginBottom: 12, fontSize: 13, fontWeight: '500' }, darkMode && styles.darkEditInput]}
               placeholder="e.g. Bank Account, Cash, Savings"
               placeholderTextColor="#94A3B8"
               value={newWalletName}
@@ -582,7 +589,7 @@ export function ProfileScreen({
 
             <Text style={[styles.inputLabel, darkMode && { color: '#A7F3D0' }]}>Initial Balance (₹)</Text>
             <TextInput
-              style={[styles.budgetInput, { backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, height: 46, marginBottom: 16 }, darkMode && styles.darkEditInput]}
+              style={[styles.budgetInput, { backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, height: 44, marginBottom: 16, fontSize: 13, fontWeight: '500' }, darkMode && styles.darkEditInput]}
               placeholder="0"
               placeholderTextColor="#94A3B8"
               keyboardType="numeric"
@@ -623,12 +630,12 @@ export function ProfileScreen({
       {/* Edit Wallet Modal */}
       <Modal visible={Boolean(editingWallet)} transparent animationType="fade" onRequestClose={() => setEditingWallet(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalCenterBackdrop}>
-          <View style={[styles.currencyModalCard, darkMode && styles.darkEditProfileModalCard]}>
+          <View style={[styles.currencyModalCard, { width: '92%', maxWidth: 420, padding: 20 }, darkMode && styles.darkEditProfileModalCard]}>
             <Text style={[styles.currencyModalTitle, darkMode && { color: '#fff' }]}>Edit Wallet</Text>
 
             <Text style={[styles.inputLabel, darkMode && { color: '#A7F3D0' }]}>Wallet Name</Text>
             <TextInput
-              style={[styles.budgetInput, { backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, height: 46, marginBottom: 12 }, darkMode && styles.darkEditInput]}
+              style={[styles.budgetInput, { backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, height: 44, marginBottom: 12, fontSize: 13, fontWeight: '500' }, darkMode && styles.darkEditInput]}
               placeholder="Enter wallet name"
               placeholderTextColor="#94A3B8"
               value={renameText}
@@ -637,7 +644,7 @@ export function ProfileScreen({
 
             <Text style={[styles.inputLabel, darkMode && { color: '#A7F3D0' }]}>Initial Balance (₹)</Text>
             <TextInput
-              style={[styles.budgetInput, { backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, height: 46, marginBottom: 16 }, darkMode && styles.darkEditInput]}
+              style={[styles.budgetInput, { backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, height: 44, marginBottom: 16, fontSize: 13, fontWeight: '500' }, darkMode && styles.darkEditInput]}
               placeholder="0"
               placeholderTextColor="#94A3B8"
               keyboardType="numeric"

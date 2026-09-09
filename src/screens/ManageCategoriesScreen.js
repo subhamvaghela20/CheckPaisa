@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../components/AppIcon';
 import { categories as defaultCategories } from '../data/appData';
 import { green, styles } from '../styles/styles';
@@ -8,6 +9,7 @@ const AVAILABLE_ICONS = ['food', 'transport', 'bills', 'shopping', 'health', 'gr
 const AVAILABLE_COLORS = ['#EF4444', '#3B82F6', '#F59E0B', '#F97316', '#EC4899', '#10B981', '#8B5CF6', '#6366F1', '#14B8A6', '#059669', '#84CC16', '#06B6D4', '#64748B'];
 
 export function ManageCategoriesScreen({ customCategories, transactions = [], recurringRules = [], darkMode = false, onBack, onUpdateCategories }) {
+  const insets = useSafeAreaInsets();
   const [activeType, setActiveType] = useState('Expense');
   const [newCatName, setNewCatName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('food');
@@ -121,7 +123,7 @@ export function ManageCategoriesScreen({ customCategories, transactions = [], re
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={[styles.formScreen, darkMode && { backgroundColor: '#040C08' }]}>
-        <View style={[styles.formHero, darkMode && { backgroundColor: '#0B2E21' }]}>
+        <View style={[styles.formHero, { paddingTop: insets.top + 12 }, darkMode && { backgroundColor: '#0B2E21' }]}>
           <View style={styles.formHeader}>
             <Pressable style={styles.formClose} onPress={onBack}>
               <AppIcon name="back" size={20} color="#FFFFFF" />
@@ -134,7 +136,7 @@ export function ManageCategoriesScreen({ customCategories, transactions = [], re
         </View>
 
         <View style={[styles.formPanel, darkMode && { backgroundColor: '#091510' }]}>
-          <ScrollView ref={scrollViewRef} style={styles.formPanelContent} contentContainerStyle={[styles.formPanelContentInner, { paddingBottom: 260 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <ScrollView ref={scrollViewRef} style={styles.formPanelContent} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 120 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Type Switcher */}
             <View style={[styles.typeToggle, darkMode && { backgroundColor: '#040C08', borderColor: 'rgba(16,185,129,0.2)', borderWidth: 1 }]}>
               <Pressable style={[styles.typeOption, activeType === 'Expense' && (darkMode ? { backgroundColor: '#EF4444' } : styles.selectedType)]} onPress={() => setActiveType('Expense')}>
@@ -199,25 +201,25 @@ export function ManageCategoriesScreen({ customCategories, transactions = [], re
             )}
 
             {/* Category List */}
-            <Text style={[styles.categoryHeading, darkMode && { color: '#FFF' }]}>{activeType} Categories ({filteredCategories.length})</Text>
+            <Text style={[styles.categoryHeading, { marginTop: 12, marginBottom: 6 }, darkMode && { color: '#FFF' }]}>{activeType} Categories ({filteredCategories.length})</Text>
             {filteredCategories.map((cat) => {
               const isActive = cat.isActive !== false;
               return (
-                <View key={cat.name} style={[styles.editBudgetRow, { flexWrap: 'wrap', gap: 8 }, darkMode && { borderBottomColor: 'rgba(255,255,255,0.08)' }, !isActive && { opacity: 0.6 }]}>
-                  <View style={[styles.transactionCategoryIcon, { backgroundColor: `${cat.color || '#10B981'}18` }]}>
-                    <AppIcon name={cat.icon || 'other'} color={cat.color || green} size={21} />
+                <View key={cat.name} style={[styles.editBudgetRow, { paddingVertical: 8, gap: 10 }, darkMode && { borderBottomColor: 'rgba(255,255,255,0.08)' }, !isActive && { opacity: 0.6 }]}>
+                  <View style={[styles.transactionCategoryIcon, { width: 36, height: 36, borderRadius: 11, backgroundColor: `${cat.color || '#10B981'}18` }]}>
+                    <AppIcon name={cat.icon || 'other'} color={cat.color || green} size={20} />
                   </View>
                   
-                  <View style={{ flex: 1, minWidth: 130 }}>
-                    <Text style={[styles.editBudgetCatName, { flex: 0, marginLeft: 0 }, darkMode && { color: '#FFF' }, !isActive && { textDecorationLine: 'line-through', color: '#94A3B8' }]}>
+                  <View style={{ flex: 1, marginRight: 6 }}>
+                    <Text style={[styles.editBudgetCatName, { flex: 0, marginLeft: 0, fontSize: 14 }, darkMode && { color: '#FFF' }, !isActive && { textDecorationLine: 'line-through', color: '#94A3B8' }]} numberOfLines={1}>
                       {cat.name}
                     </Text>
-                    <Text style={{ fontSize: 11, color: isActive ? green : '#EF4444', fontWeight: '700', marginTop: 2 }}>
+                    <Text style={{ fontSize: 11, color: isActive ? green : '#EF4444', fontWeight: '700', marginTop: 1 }}>
                       {isActive ? 'Active' : 'Inactive'}
                     </Text>
                   </View>
 
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, width: '100%' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     {/* Active Toggle Switch */}
                     <Switch
                       value={isActive}
@@ -229,9 +231,10 @@ export function ManageCategoriesScreen({ customCategories, transactions = [], re
 
                     {/* Edit Button */}
                     <Pressable
-                      style={[styles.walletActionIconBtn, darkMode && styles.darkWalletActionIconBtn]}
+                      style={[styles.catActionBtn, darkMode && styles.darkCatActionBtn]}
                       onPress={() => handleStartEdit(cat)}
                       accessibilityLabel={`Edit ${cat.name}`}
+                      hitSlop={6}
                     >
                       <AppIcon name="edit" color={darkMode ? "#A7F3D0" : "#334155"} size={16} />
                     </Pressable>
@@ -239,11 +242,12 @@ export function ManageCategoriesScreen({ customCategories, transactions = [], re
                     {/* Delete Button (for custom categories) */}
                     {cat.isCustom && (
                       <Pressable
-                        style={[styles.walletActionIconBtn, styles.walletDeleteBtn]}
+                        style={[styles.catActionBtn, styles.walletDeleteBtn]}
                         onPress={() => handleRemoveCategory(cat.name)}
                         accessibilityLabel={`Delete ${cat.name}`}
+                        hitSlop={6}
                       >
-                      <AppIcon name="delete" color="#EF4444" size={16} />
+                        <AppIcon name="delete" color="#EF4444" size={16} />
                       </Pressable>
                     )}
                   </View>

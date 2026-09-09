@@ -71,7 +71,7 @@ export function ReportsScreen({ transactions = [], customCategories = defaultCat
     <>
       <ScrollView style={styles.homeMainScroll} contentContainerStyle={[styles.homeMainScrollContent, { paddingBottom: 120 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         {/* Top Header */}
-        <View style={styles.reportsHeaderContainer}>
+        <View style={[styles.reportsHeaderContainer, { paddingTop: insets.top + 12 }]}>
           <Text style={[styles.reportsTitle, darkMode && { color: '#FFF' }]}>Reports</Text>
           <View style={[styles.monthSelector, darkMode && { backgroundColor: 'rgba(15,27,21,0.85)', borderColor: 'rgba(16,185,129,0.3)' }]}>
             <Pressable style={styles.monthNavButton} onPress={() => changeMonth(-1)}>
