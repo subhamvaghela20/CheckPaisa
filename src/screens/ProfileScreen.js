@@ -387,6 +387,13 @@ export function ProfileScreen({
             </Pressable>
           </View>
         </View>
+
+        {/* App Version Info */}
+        <View style={{ alignItems: 'center', marginTop: 18, marginBottom: 20 }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: darkMode ? '#64748B' : '#94A3B8', letterSpacing: 0.3 }}>
+            CheckPaisa v1.0.1
+          </Text>
+        </View>
       </ScrollView>
 
       {/* Edit Profile Popup Modal */}
