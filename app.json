@@ -21,7 +21,7 @@
     },
     "androidStatusBar": {
       "translucent": true,
-      "backgroundColor": "transparent"
+      "backgroundColor": "#00000000"
     },
     "plugins": [
       "@react-native-community/datetimepicker",

@@ -90,7 +90,10 @@ export function ProfileScreen({
       confirmText: config.confirmText || 'OK',
       cancelText: config.cancelText || null,
       isDestructive: Boolean(config.isDestructive),
-      onConfirm: config.onConfirm || (() => setAlertModal((prev) => ({ ...prev, visible: false }))),
+      onConfirm: () => {
+        closeAlert();
+        config.onConfirm?.();
+      },
     });
   };
 
@@ -540,7 +543,10 @@ export function ProfileScreen({
                               confirmText: 'Delete',
                               cancelText: 'Cancel',
                               isDestructive: true,
-                              onConfirm: () => onDeleteWallet?.(w.id),
+                              onConfirm: () => {
+                                closeAlert();
+                                onDeleteWallet?.(w.id);
+                              },
                             });
                           }}
                           hitSlop={6}
